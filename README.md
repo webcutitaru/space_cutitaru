@@ -78,7 +78,18 @@ POST `/api/reviews/extract` with JSON body:
 { "storeUrl": "https://your-store.com" }
 ```
 
-Returns aggregated reviews with provider metadata. Supports Judge.me API (when public token is exposed), plus HTML fallback for Loox, Yotpo, and native widgets.
+Returns aggregated reviews with provider metadata. Supported providers:
+
+- **Judge.me** — public widget API
+- **Trustoo** — Shopify app proxy (`/apps/trustoo/...`)
+- **Loox** — storefront API
+- **Air Reviews** — app proxy
+- **Yotpo** — widget CDN API
+- **Stamped.io** — widget API
+- **Okendo** — storefront REST API
+- **HTML fallback** — theme widgets and custom blocks
+
+Accepts store URL or product URL (product URL is prioritized for faster extraction).
 
 Limits in v1:
 

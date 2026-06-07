@@ -1,9 +1,10 @@
 import { detectProviders, primaryProvider } from "./detect-provider";
-import { extractHtmlFallbackReviews, extractJudgeMeReviews } from "./extractors";
+import { extractHtmlFallbackReviews, extractWithProviders } from "./extractors";
 import { fetchProducts } from "./fetch-products";
 import {
   getShopDomain,
-  normalizeStoreUrl,
+  parseStoreInput,
+  prioritizeProducts,
   resolveMyshopifyDomain,
 } from "./http";
 import type { ExtractResult, Review } from "./types";
@@ -11,30 +12,35 @@ import { MAX_PRODUCTS } from "./types";
 
 export async function extractStoreReviews(storeInput: string): Promise<ExtractResult> {
   const startedAt = Date.now();
-  const storeUrl = normalizeStoreUrl(storeInput);
+  const { storeUrl, origin, productHandle } = parseStoreInput(storeInput);
   const shopDomain =
     (await resolveMyshopifyDomain(storeUrl)) ?? getShopDomain(storeUrl);
 
-  const [{ products, truncated }, providerConfig] = await Promise.all([
-    fetchProducts(storeUrl.origin, MAX_PRODUCTS),
-    detectProviders(storeUrl.origin, shopDomain.includes("myshopify.com") ? shopDomain : null),
+  const [{ products: rawProducts, truncated }, providerConfig] = await Promise.all([
+    fetchProducts(origin, MAX_PRODUCTS),
+    detectProviders(
+      origin,
+      shopDomain.includes("myshopify.com") ? shopDomain : null,
+    ),
   ]);
 
-  if (products.length === 0) {
+  if (rawProducts.length === 0) {
     throw new Error(
       "No products found. The store may block public product listings.",
     );
   }
 
-  let reviews: Review[] = [];
+  const products = prioritizeProducts(rawProducts, productHandle);
+  const targetProduct = products[0];
 
-  if (providerConfig.judgeMe?.apiToken && providerConfig.judgeMe.shopDomain) {
-    reviews = await extractJudgeMeReviews(
-      products,
-      providerConfig.judgeMe.shopDomain,
-      providerConfig.judgeMe.apiToken,
-    );
-  }
+  let reviews: Review[] = await extractWithProviders(
+    products,
+    origin,
+    providerConfig,
+    targetProduct?.externalId && productHandle
+      ? { productId: targetProduct.externalId }
+      : undefined,
+  );
 
   const mainProvider = primaryProvider(providerConfig.providers);
 
@@ -43,7 +49,7 @@ export async function extractStoreReviews(storeInput: string): Promise<ExtractRe
   }
 
   return {
-    storeUrl: storeUrl.origin,
+    storeUrl: origin,
     shopDomain,
     provider: mainProvider,
     providers: providerConfig.providers,

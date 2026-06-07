@@ -4,7 +4,8 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo, useState } from "react";
 import { downloadFile, reviewsToCsv } from "@/lib/reviews/export";
-import type { ExtractResult } from "@/lib/reviews/types";
+import type { ExtractResult, Review } from "@/lib/reviews/types";
+import { pickBestImageUrl } from "@/lib/reviews/extractors/normalize";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -66,8 +67,8 @@ export function ReviewsExtractorApp() {
               Reviews Extractor
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
-              Paste a Shopify store URL and extract public product reviews — including
-              Judge.me, Loox, Yotpo, and native widgets.
+              Paste a Shopify store URL or product URL. Supports Judge.me, Trustoo, Loox,
+              Air Reviews, Yotpo, Stamped, Okendo, and HTML fallback.
             </p>
           </div>
         </header>
@@ -80,7 +81,7 @@ export function ReviewsExtractorApp() {
           transition={{ duration: 0.5 }}
         >
           <label className="block text-sm font-medium text-slate-300">
-            Shopify store URL
+            Shopify store or product URL
           </label>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <input
@@ -88,7 +89,7 @@ export function ReviewsExtractorApp() {
               required
               value={storeUrl}
               onChange={(event) => setStoreUrl(event.target.value)}
-              placeholder="https://your-store.com or https://shop.myshopify.com"
+              placeholder="https://your-store.com or https://your-store.com/products/handle"
               className="w-full rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/60 focus:ring-2 focus:ring-indigo-500/20"
             />
             <button
@@ -131,6 +132,9 @@ export function ReviewsExtractorApp() {
               <Stat label="Reviews" value={String(result.reviews.length)} />
               <Stat label="Products scanned" value={String(result.productCount)} />
               <Stat label="Provider" value={result.provider} />
+              {result.providers.length > 0 && (
+                <Stat label="Detected" value={result.providers.join(", ")} />
+              )}
               <Stat label="Duration" value={`${result.meta.durationMs}ms`} />
             </div>
 
@@ -143,8 +147,9 @@ export function ReviewsExtractorApp() {
 
             {result.reviews.length === 0 ? (
               <div className="rounded-2xl border border-slate-700 bg-slate-950/50 p-6 text-sm text-slate-300">
-                No public reviews found. The store may hide reviews, use a private app
-                token, or block automated access.
+                No public reviews found. Detected: {result.providers.join(", ") || "none"}.
+                Try a direct product URL, or the store may hide reviews behind a private
+                app token.
               </div>
             ) : (
               <>
@@ -185,6 +190,7 @@ export function ReviewsExtractorApp() {
                           <th className="px-4 py-3">Product</th>
                           <th className="px-4 py-3">Rating</th>
                           <th className="px-4 py-3">Review</th>
+                          <th className="px-4 py-3">Photo</th>
                           <th className="px-4 py-3">Author</th>
                           <th className="px-4 py-3">Date</th>
                           <th className="px-4 py-3">Source</th>
@@ -210,6 +216,9 @@ export function ReviewsExtractorApp() {
                                 </div>
                               )}
                               <div className="text-slate-400">{review.body}</div>
+                            </td>
+                            <td className="px-4 py-3 align-top">
+                              <ReviewPhoto review={review} />
                             </td>
                             <td className="px-4 py-3 align-top">{review.author}</td>
                             <td className="px-4 py-3 align-top whitespace-nowrap text-slate-400">
@@ -246,6 +255,33 @@ function Stat({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="mt-1 font-mono text-sm text-indigo-100">{value}</div>
+    </div>
+  );
+}
+
+function ReviewPhoto({ review }: { review: Review }) {
+  const imageUrl = pickBestImageUrl(review.imageUrls ?? []);
+
+  if (!imageUrl) {
+    return <span className="text-slate-500">—</span>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <a href={imageUrl} target="_blank" rel="noreferrer">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt={`Review photo by ${review.author}`}
+          className="h-14 w-14 rounded-lg border border-slate-700 object-cover"
+          loading="lazy"
+        />
+      </a>
+      {(review.imageUrls?.length ?? 0) > 1 && (
+        <div className="text-[10px] text-slate-500">
+          +{(review.imageUrls?.length ?? 0) - 1} more in export
+        </div>
+      )}
     </div>
   );
 }

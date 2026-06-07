@@ -12,6 +12,7 @@ export function reviewsToCsv(reviews: Review[]): string {
     "date",
     "provider",
     "verified",
+    "image_urls",
   ];
 
   const escape = (value: string | number | boolean | undefined) => {
@@ -34,6 +35,7 @@ export function reviewsToCsv(reviews: Review[]): string {
       review.date,
       review.provider,
       review.verified ? "yes" : "no",
+      (review.imageUrls ?? []).join(" | "),
     ]
       .map(escape)
       .join(","),

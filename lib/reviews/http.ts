@@ -23,7 +23,38 @@ export function normalizeStoreUrl(input: string): URL {
 
   url.hash = "";
   url.search = "";
-  return url;
+  return new URL(url.origin);
+}
+
+export function parseStoreInput(input: string): {
+  storeUrl: URL;
+  origin: string;
+  productHandle?: string;
+} {
+  const trimmed = input.trim();
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(withProtocol);
+  } catch {
+    throw new Error("Invalid store URL.");
+  }
+
+  const productMatch = parsed.pathname.match(/\/products\/([^/?#]+)/i);
+  const productHandle = productMatch
+    ? decodeURIComponent(productMatch[1])
+    : undefined;
+
+  const storeUrl = normalizeStoreUrl(input);
+
+  return {
+    storeUrl,
+    origin: storeUrl.origin,
+    productHandle,
+  };
 }
 
 export function getShopDomain(url: URL): string {
@@ -110,4 +141,19 @@ export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function prioritizeProducts<T extends { handle: string }>(
+  items: T[],
+  productHandle?: string,
+): T[] {
+  if (!productHandle) return items;
+
+  const index = items.findIndex((item) => item.handle === productHandle);
+  if (index <= 0) return items;
+
+  const copy = [...items];
+  const [target] = copy.splice(index, 1);
+  copy.unshift(target);
+  return copy;
 }

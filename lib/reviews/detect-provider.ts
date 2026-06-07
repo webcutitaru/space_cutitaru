@@ -1,5 +1,5 @@
 import { fetchHtml } from "./http";
-import type { ReviewProvider } from "./types";
+import type { ProviderConfig, ReviewProvider } from "./types";
 
 const PROVIDER_PATTERNS: Array<{ provider: ReviewProvider; patterns: RegExp[] }> =
   [
@@ -9,11 +9,27 @@ const PROVIDER_PATTERNS: Array<{ provider: ReviewProvider; patterns: RegExp[] }>
     },
     {
       provider: "loox",
-      patterns: [/loox\.io/i, /loox-review/i],
+      patterns: [/loox\.io/i, /loox-review/i, /loox-rating/i, /data-id=.*loox/i],
+    },
+    {
+      provider: "trustoo",
+      patterns: [/trustoo\.io/i, /TrustooReviews/i, /data-app="trustoo"/i, /seal-review/i],
+    },
+    {
+      provider: "air-reviews",
+      patterns: [/air-reviews/i, /airReviews/i, /Air Reviews/i, /air_reviews/i],
     },
     {
       provider: "yotpo",
-      patterns: [/yotpo/i, /staticw2\.yotpo\.com/i],
+      patterns: [/yotpo/i, /staticw2\.yotpo\.com/i, /yotpoAppKey/i],
+    },
+    {
+      provider: "stamped",
+      patterns: [/stamped\.io/i, /stamped-reviews/i, /stampedApiKey/i],
+    },
+    {
+      provider: "okendo",
+      patterns: [/okendo\.io/i, /okeReviews/i, /okendoSubscriberId/i],
     },
     {
       provider: "shopify-native",
@@ -21,12 +37,13 @@ const PROVIDER_PATTERNS: Array<{ provider: ReviewProvider; patterns: RegExp[] }>
     },
   ];
 
-export interface ProviderConfig {
-  providers: ReviewProvider[];
-  judgeMe?: {
-    shopDomain: string;
-    apiToken: string;
-  };
+function extractShopId(html: string): string | undefined {
+  return (
+    html.match(/shopId:\s*(\d+)/)?.[1] ??
+    html.match(/"shopId"\s*:\s*"(\d+)"/)?.[1] ??
+    html.match(/"shop_id"\s*:\s*"(\d+)"/)?.[1] ??
+    html.match(/shop_id['":\s]+['"]?(\d+)/)?.[1]
+  );
 }
 
 export async function detectProviders(
@@ -46,6 +63,8 @@ export async function detectProviders(
     providers.add("unknown");
   }
 
+  const shopId = extractShopId(html);
+
   const tokenMatch =
     html.match(/api_token['":\s]+['"]([a-zA-Z0-9_-]+)['"]/i) ??
     html.match(/jdgm\.(?:PUBLIC|SHOP)_TOKEN\s*=\s*['"]([^'"]+)['"]/i) ??
@@ -55,8 +74,26 @@ export async function detectProviders(
     html.match(/shop_domain['":\s]+['"]([a-z0-9-]+\.myshopify\.com)['"]/i) ??
     (shopDomain ? [null, shopDomain] : null);
 
+  const looxStoreId =
+    html.match(/publicStoreId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/storefront-api\.loox\.io[^"']*\/store\/([^/'"]+)/i)?.[1];
+
+  const yotpoAppKey =
+    html.match(/yotpoAppKey['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/staticw2\.yotpo\.com\/([^/'"]+)\//i)?.[1];
+
+  const stampedApiKey =
+    html.match(/stampedApiKey['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/apiKey['":\s]+['"]([a-f0-9-]{36})['"]/i)?.[1];
+
+  const okendoUserId =
+    html.match(/okendoSubscriberId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/api\.okendo\.io\/v1\/stores\/([^/'"]+)/i)?.[1] ??
+    html.match(/"subscriberId"\s*:\s*"([^'"]+)"/i)?.[1];
+
   const config: ProviderConfig = {
     providers: [...providers],
+    shopId,
   };
 
   if (providers.has("judge.me") && tokenMatch?.[1]) {
@@ -66,14 +103,45 @@ export async function detectProviders(
     };
   }
 
+  if (providers.has("loox") && looxStoreId) {
+    config.loox = { publicStoreId: looxStoreId };
+  }
+
+  if (providers.has("trustoo") && shopId) {
+    config.trustoo = { shopId };
+  }
+
+  if (providers.has("air-reviews") && shopId) {
+    config.airReviews = { shopId };
+  }
+
+  if (providers.has("yotpo") && yotpoAppKey) {
+    config.yotpo = { appKey: yotpoAppKey };
+  }
+
+  if (providers.has("stamped") && stampedApiKey) {
+    config.stamped = {
+      apiKey: stampedApiKey,
+      storeUrl: storeOrigin,
+    };
+  }
+
+  if (providers.has("okendo") && okendoUserId) {
+    config.okendo = { userId: okendoUserId };
+  }
+
   return config;
 }
 
 export function primaryProvider(providers: ReviewProvider[]): ReviewProvider {
   const priority: ReviewProvider[] = [
     "judge.me",
+    "trustoo",
     "loox",
+    "air-reviews",
     "yotpo",
+    "stamped",
+    "okendo",
     "shopify-native",
     "unknown",
   ];
