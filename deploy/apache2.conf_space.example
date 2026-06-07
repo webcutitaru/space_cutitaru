@@ -1,0 +1,9 @@
+# HestiaCP custom Apache include for space.cutitaru.com
+# Copy to: /home/admin/conf/web/space.cutitaru.com/apache2.ssl.conf_space
+#          /home/admin/conf/web/space.cutitaru.com/apache2.conf_space
+# Then: a2enmod proxy proxy_http && systemctl reload apache2
+
+ProxyPreserveHost On
+ProxyRequests Off
+ProxyPass / http://127.0.0.1:3001/ connectiontimeout=5 timeout=300
+ProxyPassReverse / http://127.0.0.1:3001/

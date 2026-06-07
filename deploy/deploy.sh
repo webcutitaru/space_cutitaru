@@ -8,14 +8,31 @@ PORT="${PORT:-3001}"
 
 echo "==> Deploying SPACE to ${APP_DIR}"
 
-if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js is required. Install Node 20+ first."
-  exit 1
+export DEBIAN_FRONTEND=noninteractive
+
+# Prefer nvm Node 22+ (Next.js 16 requires Node >= 20)
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+  # shellcheck disable=SC1090
+  . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+  nvm install 22 >/dev/null 2>&1 || true
+  nvm use 22 >/dev/null 2>&1 || true
 fi
 
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "Installing PM2 globally..."
+if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
+  echo "==> Installing Node.js 22"
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt-get install -y nodejs
+fi
+
+echo "Node $(node -v), npm $(npm -v)"
+
+if ! command -v pm2 >/dev/null; then
+  echo "==> Installing PM2"
   npm install -g pm2
+fi
+
+if ! command -v git >/dev/null; then
+  apt-get install -y git
 fi
 
 if [ ! -d "${APP_DIR}/.git" ]; then
@@ -46,6 +63,7 @@ fi
 
 pm2 save
 
-echo "==> Deploy complete"
-echo "App should be available on http://127.0.0.1:${PORT}"
-echo "Ensure nginx proxies space.cutitaru.com -> 127.0.0.1:${PORT}"
+echo "==> App health check"
+curl -sI "http://127.0.0.1:${PORT}" | head -5 || true
+
+echo "==> Deploy complete on port ${PORT}"
