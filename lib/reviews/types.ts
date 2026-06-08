@@ -35,6 +35,7 @@ export interface ExtractResult {
     truncated: boolean;
     maxProducts: number;
     durationMs: number;
+    hints?: string[];
   };
 }
 

@@ -147,9 +147,15 @@ export function ReviewsExtractorApp() {
 
             {result.reviews.length === 0 ? (
               <div className="rounded-2xl border border-slate-700 bg-slate-950/50 p-6 text-sm text-slate-300">
-                No public reviews found. Detected: {result.providers.join(", ") || "none"}.
-                Try a direct product URL, or the store may hide reviews behind a private
-                app token.
+                <p>
+                  No public reviews found. Detected:{" "}
+                  {result.providers.join(", ") || "none"}.
+                </p>
+                {result.meta.hints?.map((hint) => (
+                  <p key={hint} className="mt-3 text-amber-200/90">
+                    {hint}
+                  </p>
+                ))}
               </div>
             ) : (
               <>

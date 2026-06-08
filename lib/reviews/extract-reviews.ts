@@ -1,7 +1,8 @@
-import { detectProviders, primaryProvider } from "./detect-provider";
+import { buildExtractionHints, detectProviders, primaryProvider } from "./detect-provider";
 import { extractHtmlFallbackReviews, extractWithProviders } from "./extractors";
-import { fetchProducts } from "./fetch-products";
+import { enrichProductExternalIds, fetchProducts } from "./fetch-products";
 import {
+  fetchHtml,
   getShopDomain,
   parseStoreInput,
   prioritizeProducts,
@@ -16,11 +17,21 @@ export async function extractStoreReviews(storeInput: string): Promise<ExtractRe
   const shopDomain =
     (await resolveMyshopifyDomain(storeUrl)) ?? getShopDomain(storeUrl);
 
+  const extraHtmlPages: string[] = [];
+  if (productHandle) {
+    try {
+      extraHtmlPages.push(await fetchHtml(`${origin}/products/${productHandle}`));
+    } catch {
+      // Product page HTML is optional for detection.
+    }
+  }
+
   const [{ products: rawProducts, truncated }, providerConfig] = await Promise.all([
     fetchProducts(origin, MAX_PRODUCTS),
     detectProviders(
       origin,
       shopDomain.includes("myshopify.com") ? shopDomain : null,
+      extraHtmlPages,
     ),
   ]);
 
@@ -30,7 +41,18 @@ export async function extractStoreReviews(storeInput: string): Promise<ExtractRe
     );
   }
 
-  const products = prioritizeProducts(rawProducts, productHandle);
+  let products = prioritizeProducts(rawProducts, productHandle);
+  const needsProductIds =
+    providerConfig.loox ||
+    providerConfig.yotpo ||
+    providerConfig.okendo ||
+    Boolean(productHandle);
+
+  if (needsProductIds) {
+    products = await enrichProductExternalIds(origin, products, productHandle ? 5 : 20);
+    products = prioritizeProducts(products, productHandle);
+  }
+
   const targetProduct = products[0];
 
   let reviews: Review[] = await extractWithProviders(
@@ -48,6 +70,8 @@ export async function extractStoreReviews(storeInput: string): Promise<ExtractRe
     reviews = await extractHtmlFallbackReviews(products, mainProvider);
   }
 
+  const hints = buildExtractionHints(providerConfig, reviews.length);
+
   return {
     storeUrl: origin,
     shopDomain,
@@ -59,6 +83,7 @@ export async function extractStoreReviews(storeInput: string): Promise<ExtractRe
       truncated,
       maxProducts: MAX_PRODUCTS,
       durationMs: Date.now() - startedAt,
+      hints: hints.length > 0 ? hints : undefined,
     },
   };
 }

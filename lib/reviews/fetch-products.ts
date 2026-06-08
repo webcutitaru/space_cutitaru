@@ -119,3 +119,28 @@ export async function fetchProducts(
     truncated: products.length > limit,
   };
 }
+
+export async function enrichProductExternalIds(
+  storeOrigin: string,
+  products: ProductInfo[],
+  limit = 20,
+): Promise<ProductInfo[]> {
+  const copy = products.map((product) => ({ ...product }));
+  let enriched = 0;
+
+  for (const product of copy) {
+    if (product.externalId || enriched >= limit) continue;
+
+    try {
+      const data = await fetchJson<{ id: number }>(
+        `${storeOrigin}/products/${product.handle}.js`,
+      );
+      product.externalId = String(data.id);
+      enriched += 1;
+    } catch {
+      continue;
+    }
+  }
+
+  return copy;
+}

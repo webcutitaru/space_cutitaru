@@ -46,11 +46,22 @@ function extractShopId(html: string): string | undefined {
   );
 }
 
-export async function detectProviders(
-  storeOrigin: string,
+function extractLooxStoreId(html: string): string | undefined {
+  return (
+    html.match(/publicStoreId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/public_store_id['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/looxSettings[\s\S]{0,400}?publicStoreId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/storefront-api\.loox\.io[^"']*\/store\/([^/'"]+)/i)?.[1] ??
+    html.match(/data-loox-store-id=['"]([^'"]+)['"]/i)?.[1] ??
+    html.match(/loox\.io\/widget\/([^/'"?]+)/i)?.[1]
+  );
+}
+
+export function detectProvidersFromHtml(
+  htmlPages: string[],
   shopDomain: string | null,
-): Promise<ProviderConfig> {
-  const html = await fetchHtml(storeOrigin);
+): ProviderConfig {
+  const html = htmlPages.join("\n");
   const providers = new Set<ReviewProvider>();
 
   for (const { provider, patterns } of PROVIDER_PATTERNS) {
@@ -74,9 +85,7 @@ export async function detectProviders(
     html.match(/shop_domain['":\s]+['"]([a-z0-9-]+\.myshopify\.com)['"]/i) ??
     (shopDomain ? [null, shopDomain] : null);
 
-  const looxStoreId =
-    html.match(/publicStoreId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
-    html.match(/storefront-api\.loox\.io[^"']*\/store\/([^/'"]+)/i)?.[1];
+  const looxStoreId = extractLooxStoreId(html);
 
   const yotpoAppKey =
     html.match(/yotpoAppKey['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
@@ -89,7 +98,7 @@ export async function detectProviders(
   const okendoUserId =
     html.match(/okendoSubscriberId['":\s]+['"]([^'"]+)['"]/i)?.[1] ??
     html.match(/api\.okendo\.io\/v1\/stores\/([^/'"]+)/i)?.[1] ??
-    html.match(/"subscriberId"\s*:\s*"([^'"]+)"/i)?.[1];
+    html.match(/"subscriberId"\s*:\s*"([^"]+)"/i)?.[1];
 
   const config: ProviderConfig = {
     providers: [...providers],
@@ -122,7 +131,7 @@ export async function detectProviders(
   if (providers.has("stamped") && stampedApiKey) {
     config.stamped = {
       apiKey: stampedApiKey,
-      storeUrl: storeOrigin,
+      storeUrl: "",
     };
   }
 
@@ -131,6 +140,73 @@ export async function detectProviders(
   }
 
   return config;
+}
+
+export async function detectProviders(
+  storeOrigin: string,
+  shopDomain: string | null,
+  extraPages: string[] = [],
+): Promise<ProviderConfig> {
+  const homepageHtml = await fetchHtml(storeOrigin);
+  const config = detectProvidersFromHtml([homepageHtml, ...extraPages], shopDomain);
+
+  if (config.stamped) {
+    config.stamped.storeUrl = storeOrigin;
+  }
+
+  return config;
+}
+
+export function buildExtractionHints(
+  config: ProviderConfig,
+  reviewCount: number,
+): string[] {
+  if (reviewCount > 0) return [];
+
+  const hints: string[] = [];
+  const providers = new Set(config.providers);
+
+  if (providers.has("loox")) {
+    if (!config.loox?.publicStoreId) {
+      hints.push(
+        "Loox detected, but publicStoreId was not found in the page HTML. Paste a direct product URL where Loox reviews are visible.",
+      );
+    } else {
+      hints.push(
+        "Loox does not need a merchant API secret for public reviews — only publicStoreId (found). If reviews are still empty, the store may load Loox only on product pages or block server access.",
+      );
+    }
+  }
+
+  if (providers.has("judge.me") && !config.judgeMe?.apiToken) {
+    hints.push(
+      "Judge.me detected, but no public API token was found in the theme. Judge.me requires api_token in the storefront HTML.",
+    );
+  }
+
+  if (providers.has("trustoo") && !config.trustoo?.shopId) {
+    hints.push("Trustoo detected, but shop_id was not found in the page HTML.");
+  }
+
+  if (providers.has("yotpo") && !config.yotpo?.appKey) {
+    hints.push("Yotpo detected, but app key was not found in the page HTML.");
+  }
+
+  if (providers.has("stamped") && !config.stamped?.apiKey) {
+    hints.push("Stamped detected, but API key was not found in the page HTML.");
+  }
+
+  if (providers.has("okendo") && !config.okendo?.userId) {
+    hints.push("Okendo detected, but subscriber ID was not found in the page HTML.");
+  }
+
+  if (hints.length === 0) {
+    hints.push(
+      "No reviews returned from API or HTML fallback. Try a direct product URL, or the store may password-protect /products.json.",
+    );
+  }
+
+  return hints;
 }
 
 export function primaryProvider(providers: ReviewProvider[]): ReviewProvider {

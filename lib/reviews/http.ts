@@ -119,7 +119,11 @@ export async function fetchHtml(url: string, timeoutMs = 15000): Promise<string>
   }
 }
 
-export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  timeoutMs = 15000,
+  extraHeaders?: Record<string, string>,
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -130,6 +134,7 @@ export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
       headers: {
         "User-Agent": "SPACE-ReviewsExtractor/1.0",
         Accept: "application/json",
+        ...extraHeaders,
       },
     });
 
@@ -141,6 +146,14 @@ export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Headers that satisfy Loox Storefront API CORS checks (server-side fetch). */
+export function storeOriginHeaders(storeOrigin: string): Record<string, string> {
+  return {
+    Origin: storeOrigin,
+    Referer: `${storeOrigin}/`,
+  };
 }
 
 export function prioritizeProducts<T extends { handle: string }>(

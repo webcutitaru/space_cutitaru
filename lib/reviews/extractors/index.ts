@@ -37,7 +37,14 @@ export async function extractWithProviders(
   }
 
   if (config.loox?.publicStoreId) {
-    runners.push(() => extractLooxReviews(products, config.loox!.publicStoreId));
+    runners.push(() =>
+      extractLooxReviews(
+        products,
+        config.loox!.publicStoreId,
+        origin,
+        options?.productId,
+      ),
+    );
   }
 
   if (config.airReviews) {
