@@ -116,34 +116,41 @@ export function SpaceHero() {
   );
 }
 
+const PROJECTS = [
+  { number: "01", title: "Reviews Extractor", href: "/reviews-extractor" },
+  { number: "02", title: "Image Converter", href: "/image-converter" },
+] as const;
+
 function ProjectCTA({ reduced }: { reduced: boolean }) {
   return (
     <motion.div
-      className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2 sm:bottom-12"
+      className="absolute bottom-10 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 flex-col gap-3 px-4 sm:bottom-12 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4 sm:px-0"
       initial={reduced ? false : { opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.9, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
     >
-      <Link href="/reviews-extractor" className="group relative block">
-        <motion.span
-          className="absolute -inset-1 rounded-full bg-indigo-500/30 blur-md"
-          animate={reduced ? undefined : { opacity: [0.4, 0.8, 0.4] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <span className="relative flex items-center gap-3 rounded-full border border-indigo-400/30 bg-slate-950/70 px-6 py-3 text-sm font-medium text-indigo-100 backdrop-blur-md transition-colors group-hover:border-indigo-300/50 group-hover:bg-slate-900/80">
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300/80">
-            Project 01
-          </span>
-          <span>Reviews Extractor</span>
+      {PROJECTS.map((project) => (
+        <Link key={project.href} href={project.href} className="group relative block">
           <motion.span
-            aria-hidden
-            animate={reduced ? undefined : { x: [0, 4, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            →
-          </motion.span>
-        </span>
-      </Link>
+            className="absolute -inset-1 rounded-full bg-indigo-500/30 blur-md"
+            animate={reduced ? undefined : { opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <span className="relative flex items-center justify-center gap-3 rounded-full border border-indigo-400/30 bg-slate-950/70 px-6 py-3 text-sm font-medium text-indigo-100 backdrop-blur-md transition-colors group-hover:border-indigo-300/50 group-hover:bg-slate-900/80">
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300/80">
+              Project {project.number}
+            </span>
+            <span>{project.title}</span>
+            <motion.span
+              aria-hidden
+              animate={reduced ? undefined : { x: [0, 4, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              →
+            </motion.span>
+          </span>
+        </Link>
+      ))}
     </motion.div>
   );
 }

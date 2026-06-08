@@ -68,7 +68,9 @@ sudo certbot --nginx -d space.cutitaru.com
 |------|-------------|
 | `/` | SPACE home — animated landing |
 | `/reviews-extractor` | Shopify reviews extractor SaaS |
+| `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
 | `/api/reviews/extract` | POST API for review extraction |
+| `/api/image-convert/export` | POST multipart API for HQ WebP export |
 
 ## Reviews Extractor
 
@@ -96,3 +98,20 @@ Limits in v1:
 - Max 50 products per run
 - Public storefront reviews only
 - Some stores may block automated access
+
+## Image Converter
+
+Route: `/image-converter`
+
+Hybrid flow:
+
+1. **Preview** — browser Canvas converts JPEG/PNG → WebP instantly (files stay local)
+2. **Quick save** — download preview blob without upload
+3. **Export HQ** — POST `/api/image-convert/export` with Sharp for final WebP
+
+Presets: `smaller` (72 / 1200px), `balanced` (85 / 1800px), `higher` (92 / 2400px).
+
+Limits:
+
+- JPEG and PNG only
+- Max 20 MB per file
