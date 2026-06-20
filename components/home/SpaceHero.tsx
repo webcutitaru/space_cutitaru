@@ -119,6 +119,7 @@ export function SpaceHero() {
 const PROJECTS = [
   { number: "01", title: "Reviews Extractor", href: "/reviews-extractor" },
   { number: "02", title: "Image Converter", href: "/image-converter" },
+  { number: "03", title: "Link2Pic", href: "/link2pic" },
 ] as const;
 
 function ProjectCTA({ reduced }: { reduced: boolean }) {

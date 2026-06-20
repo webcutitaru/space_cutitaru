@@ -69,8 +69,12 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/` | SPACE home — animated landing |
 | `/reviews-extractor` | Shopify reviews extractor SaaS |
 | `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
+| `/link2pic` | Extract and download images from product page URLs |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
+| `/api/link2pic/extract` | POST API for image URL extraction |
+| `/api/link2pic/proxy` | GET proxy for CORS-safe image download |
+| `/api/link2pic/meta` | GET image metadata (size, dimensions) |
 
 ## Reviews Extractor
 
@@ -115,3 +119,43 @@ Limits:
 
 - JPEG and PNG only
 - Max 20 MB per file
+
+## Link2Pic
+
+Route: `/link2pic`
+
+Public UI copy is platform-agnostic (“paste a link, check availability, download images”). Backend still auto-detects Shopify, Alibaba, and generic pages.
+
+Paste a product or listing URL (Shopify, Alibaba, or generic). Returns **product gallery images** plus **other images found on the page** (description, specs) in separate sections, with name, dimensions, file size, click-to-zoom preview, individual download, and ZIP export.
+
+POST `/api/link2pic/extract` with JSON body:
+
+```json
+{ "pageUrl": "https://your-store.com/products/handle" }
+```
+
+GET `/api/link2pic/proxy?url=` — server proxy for cross-origin image download.
+
+GET `/api/link2pic/meta?url=` — HEAD/probe metadata (size, dimensions).
+
+Filtering in v1:
+
+- Removes icons, logos, payment badges, avatars, and UI assets
+- Shopify: product gallery only (`.json` order preserved)
+- Generic: JSON-LD Product, og:image, scoped product selectors (not full-page scrape)
+- Alibaba: allowlist for `/kf/`, `/ibank/`, `/imgextra/`, `_!!`, `O1CN…`; blocks banners, `/tps/` icons and tiny thumbs; parses `-tps-W-H` dimensions; does not apply Shopify URL transforms to alicdn links
+- Minimum ~200×200 effective area when dimensions are known
+- **Alibaba captcha fallback:** when Alibaba serves a bot-check (Baxia) page, Link2Pic first tries **Google Chrome via Playwright** to read `window.detailData.globalData.product.mediaItems` (full gallery). If the browser is unavailable, it falls back to the main image from `window._config_.customImage`
+- **Alibaba browser mode:** requires Chrome installed. Default: enabled when captcha/no gallery is detected. Set `LINK2PIC_ALIBABA_BROWSER=0` to disable. On Linux VPS without a display, run the app under `xvfb-run` (headed Chrome). `LINK2PIC_ALIBABA_HEADLESS=true` forces headless mode (often still blocked by Alibaba)
+
+Supported platforms:
+
+- **Shopify** — `/products/{handle}.json` + gallery HTML fallback
+- **Alibaba / 1688** — `window.detailData` gallery via Playwright + Chrome when needed, HTML/alicdn fallback
+- **Generic** — Product JSON-LD, og:image, scoped product selectors
+
+Limits:
+
+- Max 80 product images per run
+- Max 15 MB per image download
+- Public pages only; bot-protected sites may fail
