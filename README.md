@@ -70,11 +70,15 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/reviews-extractor` | Shopify reviews extractor SaaS |
 | `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
 | `/link2pic` | Extract and download images from product page URLs |
+| `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
 | `/api/link2pic/extract` | POST API for image URL extraction |
 | `/api/link2pic/proxy` | GET proxy for CORS-safe image download |
 | `/api/link2pic/meta` | GET image metadata (size, dimensions) |
+| `/api/reelsave/extract` | POST API for Instagram/TikTok video metadata |
+| `/api/reelsave/download` | GET stream video download |
+| `/api/reelsave/thumbnail` | GET thumbnail proxy |
 
 ## Reviews Extractor
 
@@ -159,3 +163,32 @@ Limits:
 - Max 80 product images per run
 - Max 15 MB per image download
 - Public pages only; bot-protected sites may fail
+
+## ReelSave
+
+Route: `/reelsave`
+
+Paste a public Instagram post/Reel or TikTok video URL. Returns metadata (title, uploader, duration, resolution) and streams the video without watermark via yt-dlp.
+
+POST `/api/reelsave/extract` with JSON body:
+
+```json
+{ "pageUrl": "https://www.tiktok.com/@user/video/123" }
+```
+
+GET `/api/reelsave/download?pageUrl=&formatId=` — stream MP4 download (server-side via yt-dlp).
+
+GET `/api/reelsave/thumbnail?url=` — thumbnail proxy for preview.
+
+**Server requirements:** `yt-dlp` and `ffmpeg` on PATH (installed automatically by `deploy/deploy.sh`). Optional env: `YTDLP_PATH`.
+
+Supported links:
+
+- **Instagram** — public posts and Reels
+- **TikTok** — `tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com`
+
+Limits:
+
+- Public videos only (no Stories or private accounts)
+- Max 200 MB per download
+- Rate limit: 10 requests/min per IP

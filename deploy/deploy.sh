@@ -35,6 +35,20 @@ if ! command -v git >/dev/null; then
   apt-get install -y git
 fi
 
+if ! command -v ffmpeg >/dev/null; then
+  echo "==> Installing ffmpeg"
+  apt-get install -y ffmpeg
+fi
+
+if ! command -v yt-dlp >/dev/null; then
+  echo "==> Installing yt-dlp"
+  curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+    -o /usr/local/bin/yt-dlp
+  chmod a+rx /usr/local/bin/yt-dlp
+fi
+
+echo "yt-dlp $(yt-dlp --version 2>/dev/null || echo 'missing'), ffmpeg $(ffmpeg -version 2>/dev/null | head -1 || echo 'missing')"
+
 if [ ! -d "${APP_DIR}/.git" ]; then
   echo "==> Cloning repository"
   mkdir -p "$(dirname "${APP_DIR}")"
