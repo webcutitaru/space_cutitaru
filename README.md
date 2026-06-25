@@ -71,6 +71,10 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
 | `/link2pic` | Extract and download images from product page URLs |
 | `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
+| `/cutitaru` | cutitaru.com portfolio (Letter design) — RO home |
+| `/cutitaru/en` | cutitaru EN home |
+| `/cutitaru/ru` | cutitaru RU home |
+| `/cutitaru/*` | Service & legal pages (21 URLs total) |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
 | `/api/link2pic/extract` | POST API for image URL extraction |
@@ -79,6 +83,23 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/api/reelsave/extract` | POST API for Instagram/TikTok video metadata |
 | `/api/reelsave/download` | GET stream video download |
 | `/api/reelsave/thumbnail` | GET thumbnail proxy |
+| `/api/cutitaru/contact-token` | GET CSRF token for contact form |
+| `/api/cutitaru/contact` | POST contact form (Telegram notify) |
+
+## cutitaru (Project 05)
+
+Full trilingual portfolio at `/cutitaru` with Letter design system (Playfair Display + Inter, vault-ink hero, tinted feature cards, 3D render placeholders).
+
+Content is imported from `webcutitaru.git` via:
+
+```bash
+node scripts/import-cutitaru-content.mjs
+```
+
+Contact form env vars (see `.env.example`):
+
+- `CONTACT_CSRF_SECRET` — required for form submissions
+- `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` — optional Telegram notifications
 
 ## Reviews Extractor
 
