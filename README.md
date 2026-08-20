@@ -71,6 +71,7 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
 | `/link2pic` | Extract and download images from product page URLs |
 | `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
+| `/etsy-analyzer` | Paste Etsy listing HTML, compare listings, plain-language reference verdict |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
 | `/api/link2pic/extract` | POST API for image URL extraction |
@@ -78,6 +79,7 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/api/link2pic/meta` | GET image metadata (size, dimensions) |
 | `/api/reelsave/extract` | POST API for Instagram/TikTok video metadata |
 | `/api/reelsave/download` | GET stream video download |
+| `/api/etsy-analyzer/analyze` | POST HTML array → benchmark insight |
 | `/api/reelsave/thumbnail` | GET thumbnail proxy |
 
 ## Reviews Extractor

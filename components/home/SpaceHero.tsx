@@ -121,12 +121,13 @@ const PROJECTS = [
   { number: "02", title: "Image Converter", href: "/image-converter" },
   { number: "03", title: "Link2Pic", href: "/link2pic" },
   { number: "04", title: "ReelSave", href: "/reelsave" },
+  { number: "05", title: "Etsy Analyzer", href: "/etsy-analyzer" },
 ] as const;
 
 function ProjectCTA({ reduced }: { reduced: boolean }) {
   return (
     <motion.div
-      className="absolute bottom-10 left-1/2 z-10 grid w-full max-w-4xl -translate-x-1/2 grid-cols-1 gap-3 px-4 sm:bottom-12 sm:grid-cols-2 lg:grid-cols-4 sm:px-0"
+      className="absolute bottom-10 left-1/2 z-10 grid w-full max-w-5xl -translate-x-1/2 grid-cols-1 gap-3 px-4 sm:bottom-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:px-0"
       initial={reduced ? false : { opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.9, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
