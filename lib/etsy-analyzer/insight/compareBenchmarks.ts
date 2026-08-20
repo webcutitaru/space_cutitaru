@@ -1,5 +1,6 @@
 import type { ListingReport } from '../types/listing'
 import { scoreListing } from './scoreListing'
+import { buildTagFrequency } from './tagFrequency'
 import type { BenchmarkInsight, BenchmarkRange } from './types'
 
 function median(nums: number[]): number | undefined {
@@ -22,45 +23,17 @@ function rangeOf(
   return { label, min, max, median: med, unit, note: noteBuilder(min, max, med) }
 }
 
-function normPhrase(p: string): string {
-  return p.trim().toLowerCase().replace(/\s+/g, ' ')
-}
-
-function sharedPhrases(reports: ListingReport[]): string[] {
-  if (reports.length < 2) {
-    // Single listing: top keyword phrases as "what this product is about"
-    return (reports[0]?.keywords ?? [])
-      .filter((k) => k.n >= 2)
-      .slice(0, 8)
-      .map((k) => k.phrase)
-  }
-
-  const counts = new Map<string, number>()
-  for (const r of reports) {
-    const seen = new Set<string>()
-    const fromTags = r.seo.tags.map(normPhrase)
-    const fromKw = r.keywords.filter((k) => k.n >= 2).map((k) => normPhrase(k.phrase))
-    for (const p of [...fromTags, ...fromKw]) {
-      if (!p || p.length < 3 || seen.has(p)) continue
-      seen.add(p)
-      counts.set(p, (counts.get(p) ?? 0) + 1)
-    }
-  }
-
-  return [...counts.entries()]
-    .filter(([, c]) => c >= 2)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, 12)
-    .map(([p]) => p)
-}
-
 function fmtNum(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
 }
 
 export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsight {
   const scores = reports.map(scoreListing)
-  const phrases = sharedPhrases(reports)
+  const tagResult = buildTagFrequency(reports)
+  const phrases = tagResult.tagFrequency
+    .filter((t) => t.count >= Math.min(2, reports.length))
+    .slice(0, 12)
+    .map((t) => t.phrase)
 
   const prices = reports.map((r) => r.price.current).filter((n): n is number => n != null)
   const favs = reports.map((r) => r.knownSignals.favorites).filter((n): n is number => n != null)
@@ -125,8 +98,12 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
   if (phrases.length > 0) {
     plainBullets.push(
       reports.length === 1
-        ? `Teme / cuvinte care definesc oferta: ${phrases.slice(0, 5).join(', ')}.`
-        : `Cuvinte care apar la mai multe listing-uri (ancoră de nișă): ${phrases.slice(0, 5).join(', ')}.`,
+        ? `Tag-uri SEO extrase: ${phrases.slice(0, 5).join(', ')}.`
+        : `Tag-uri care se repetă la mai multe listing-uri: ${phrases.slice(0, 5).join(', ')}. Alege manual după relevanța produsului tău.`,
+    )
+  } else if (tagResult.listingsWithoutTags > 0) {
+    plainBullets.push(
+      `${tagResult.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML — View Source pe pagina de produs, nu pe search.`,
     )
   }
 
@@ -151,7 +128,7 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
   }
 
   const referenceNote = usableAsReference
-    ? 'Poți lua acest set ca ghid: ce badge-uri apar, ce prețuri țin, ce limbaj se repetă. Nu copia listing-ul — copiază tiparul de ofertă.'
+    ? 'Poți lua acest set ca ghid: ce badge-uri apar, ce prețuri țin, ce tag-uri se repetă. Alege expresiile relevante pentru produsul tău — nu copia tot 1:1.'
     : 'Adaugă încă 1–2 listing-uri cu Bestseller / multe favorite ca să ai o referință mai sigură.'
 
   return {
@@ -160,6 +137,10 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
     headline,
     plainBullets: plainBullets.slice(0, 5),
     sharedPhrases: phrases,
+    tagFrequency: tagResult.tagFrequency,
+    frequencyGroups: tagResult.frequencyGroups,
+    suggestions: tagResult.suggestions,
+    listingsWithoutTags: tagResult.listingsWithoutTags,
     ranges,
     usableAsReference,
     referenceNote,

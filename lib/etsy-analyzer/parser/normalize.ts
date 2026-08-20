@@ -448,9 +448,19 @@ export function normalizeReport(input: {
   const url = pickString(meta.canonicalUrl, meta.ogUrl, listing && getCI(listing, 'url', 'listing_url'))
   const slug = url?.match(/\/listing\/\d+\/([^/?#]+)/)?.[1]
 
+  // Only the listing's SEO tags (up to 13). DOM /market chips stay in sources.dom.tags.
   const tags = (() => {
-    const fromListing = listing ? asStringArray(getCI(listing, 'tags', 'tag_list', 'keywords')) : []
-    return [...new Set([...fromListing, ...dom.tags])].slice(0, 30)
+    const fromListing = listing ? asStringArray(getCI(listing, 'tags', 'tag_list')) : []
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const t of fromListing) {
+      const key = t.trim().toLowerCase().replace(/\s+/g, ' ')
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      out.push(t.trim().replace(/\s+/g, ' '))
+      if (out.length >= 13) break
+    }
+    return out
   })()
 
   const materials = (() => {

@@ -5,10 +5,15 @@ import { motion, useReducedMotion } from "motion/react";
 import { useId, useRef, useState } from "react";
 import type {
   BenchmarkInsight,
+  FrequencyGroup,
   ListingReport,
   ListingScore,
   StrengthLabel,
+  TagFrequencyItem,
 } from "@/lib/etsy-analyzer";
+
+const MAX_SLOTS = 10;
+const ETSY_TAG_MAX_CHARS = 20;
 
 function strengthLabelRo(s: StrengthLabel): string {
   switch (s) {
@@ -41,21 +46,43 @@ function money(report: ListingReport): string {
   return base;
 }
 
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // ignore
+  }
+}
+
 export function EtsyAnalyzerApp() {
   const uid = useId();
   const reduced = useReducedMotion() ?? false;
   const [slots, setSlots] = useState<HtmlSlot[]>(() => [
     makeSlot(1, `${uid}-1`),
     makeSlot(2, `${uid}-2`),
+    makeSlot(3, `${uid}-3`),
+    makeSlot(4, `${uid}-4`),
+    makeSlot(5, `${uid}-5`),
   ]);
   const [insight, setInsight] = useState<BenchmarkInsight | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const relabel = (list: HtmlSlot[]) =>
     list.map((s, i) => ({ ...s, label: `Listing ${i + 1}` }));
 
   const filled = slots.filter((s) => s.html.trim()).length;
+
+  function flashCopied(key: string) {
+    setCopied(key);
+    window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500);
+  }
+
+  async function handleCopy(key: string, text: string) {
+    await copyText(text);
+    flashCopied(key);
+  }
 
   async function analyze() {
     setBusy(true);
@@ -82,8 +109,14 @@ export function EtsyAnalyzerApp() {
       }
 
       setInsight(data.insight);
-      if (data.warnings?.length) {
-        setError(`Unele sloturi au eșuat: ${data.warnings.join(" · ")}`);
+      const warns = [...(data.warnings ?? [])];
+      if (data.insight.listingsWithoutTags > 0) {
+        warns.push(
+          `${data.insight.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML.`,
+        );
+      }
+      if (warns.length) {
+        setError(warns.join(" · "));
       }
     } catch (e) {
       setInsight(null);
@@ -99,6 +132,10 @@ export function EtsyAnalyzerApp() {
       headline: insight.headline,
       plainBullets: insight.plainBullets,
       sharedPhrases: insight.sharedPhrases,
+      tagFrequency: insight.tagFrequency,
+      frequencyGroups: insight.frequencyGroups,
+      suggestions: insight.suggestions,
+      listingsWithoutTags: insight.listingsWithoutTags,
       ranges: insight.ranges,
       usableAsReference: insight.usableAsReference,
       referenceNote: insight.referenceNote,
@@ -145,8 +182,9 @@ export function EtsyAnalyzerApp() {
             Etsy Analyzer
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
-            Lipești HTML-ul a 1–5 listing-uri Etsy. Primești un rezumat clar —
-            ce merită ca referință — iar detaliile stau în dropdown.
+            Lipește HTML-ul a 5–10 bestselleri din aceeași nișă. Vezi ce tag-uri SEO
+            se repetă (10/10, 9/10…) și alege manual expresiile relevante pentru
+            produsul tău.
           </p>
         </header>
 
@@ -195,20 +233,20 @@ export function EtsyAnalyzerApp() {
               type="button"
               onClick={() =>
                 setSlots((prev) => {
-                  if (prev.length >= 5) return prev;
+                  if (prev.length >= MAX_SLOTS) return prev;
                   return relabel([
                     ...prev,
                     makeSlot(prev.length + 1, `${uid}-${Date.now()}`),
                   ]);
                 })
               }
-              disabled={slots.length >= 5}
+              disabled={slots.length >= MAX_SLOTS}
               className="rounded-full border border-indigo-400/30 bg-slate-900/80 px-4 py-2.5 text-sm text-indigo-100 transition hover:border-indigo-300/50 disabled:opacity-50"
             >
               + Adaugă listing
             </button>
             <span className="text-xs text-slate-500">
-              {filled}/{slots.length} completate
+              {filled}/{slots.length} completate · max {MAX_SLOTS}
             </span>
           </div>
         </section>
@@ -237,6 +275,23 @@ export function EtsyAnalyzerApp() {
             </div>
 
             <VerdictBlock insight={insight} />
+
+            {insight.frequencyGroups.length > 0 && (
+              <FrequencyGroupsBlock
+                groups={insight.frequencyGroups}
+                copied={copied}
+                onCopy={handleCopy}
+              />
+            )}
+
+            {insight.suggestions.forTags.length > 0 && (
+              <SuggestionListsBlock
+                forTags={insight.suggestions.forTags}
+                forTitle={insight.suggestions.forTitle}
+                copied={copied}
+                onCopy={handleCopy}
+              />
+            )}
 
             {insight.ranges.length > 0 && (
               <details className="rounded-2xl border border-indigo-400/15 bg-slate-950/50 open:pb-4">
@@ -357,14 +412,8 @@ function SlotBlock({
 }
 
 function VerdictBlock({ insight }: { insight: BenchmarkInsight }) {
-  const {
-    headline,
-    plainBullets,
-    sharedPhrases,
-    referenceNote,
-    usableAsReference,
-    scores,
-  } = insight;
+  const { headline, plainBullets, referenceNote, usableAsReference, scores } =
+    insight;
 
   return (
     <section
@@ -436,25 +485,208 @@ function VerdictBlock({ insight }: { insight: BenchmarkInsight }) {
           </article>
         ))}
       </div>
-
-      {sharedPhrases.length > 0 && (
-        <div className="mt-5 border-t border-indigo-400/10 pt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Ancore de limbaj
-          </h3>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {sharedPhrases.map((p) => (
-              <span
-                key={p}
-                className="rounded-full border border-slate-600/50 bg-slate-900/60 px-2.5 py-1 text-xs text-slate-300"
-              >
-                {p}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
+  );
+}
+
+function FrequencyGroupsBlock({
+  groups,
+  copied,
+  onCopy,
+}: {
+  groups: FrequencyGroup[];
+  copied: string | null;
+  onCopy: (key: string, text: string) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/60 p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-medium text-white">Expresii pe frecvență</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Tag-uri SEO neschimbate, grupate după câte listing-uri le conțin.
+            Alege manual ce e relevant pentru produsul tău.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            onCopy(
+              "freq-all",
+              groups
+                .flatMap((g) =>
+                  g.phrases.map((p) => `${p}\t${g.count}/${g.total}`),
+                )
+                .join("\n"),
+            )
+          }
+          className="rounded-full border border-indigo-400/30 px-3 py-1.5 text-xs text-indigo-100 hover:border-indigo-300/50"
+        >
+          {copied === "freq-all" ? "Copiat" : "Copy CSV"}
+        </button>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        {groups.map((g) => {
+          const key = `group-${g.count}`;
+          return (
+            <div key={key}>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-mono text-sm font-semibold text-indigo-200">
+                  Apare în {g.count}/{g.total}
+                  <span className="ml-2 font-sans text-xs font-normal text-slate-500">
+                    ({g.phrases.length} expresii)
+                  </span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => onCopy(key, g.phrases.join("\n"))}
+                  className="rounded-full px-2.5 py-1 text-[11px] text-slate-400 hover:text-indigo-200"
+                >
+                  {copied === key ? "Copiat" : "Copy grup"}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {g.phrases.map((p) => (
+                  <PhraseChip
+                    key={`${g.count}-${p}`}
+                    phrase={p}
+                    copied={copied}
+                    copyKey={`p-${g.count}-${p}`}
+                    onCopy={onCopy}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SuggestionListsBlock({
+  forTags,
+  forTitle,
+  copied,
+  onCopy,
+}: {
+  forTags: TagFrequencyItem[];
+  forTitle: TagFrequencyItem[];
+  copied: string | null;
+  onCopy: (key: string, text: string) => void;
+}) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <SuggestionColumn
+        title="Sugestii Tags"
+        hint="Aceleași expresii, neschimbate. Etsy permite max 13 tag-uri · 20 caractere fiecare — alegi tu ce lipești."
+        items={forTags}
+        showCharWarn
+        copied={copied}
+        copyPrefix="sug-tags"
+        onCopy={onCopy}
+      />
+      <SuggestionColumn
+        title="Sugestii Title"
+        hint="Aceleași expresii ca și candidate pentru titlu. Nu generăm titluri — compui manual din ce e relevant."
+        items={forTitle}
+        showCharWarn={false}
+        copied={copied}
+        copyPrefix="sug-title"
+        onCopy={onCopy}
+      />
+    </div>
+  );
+}
+
+function SuggestionColumn({
+  title,
+  hint,
+  items,
+  showCharWarn,
+  copied,
+  copyPrefix,
+  onCopy,
+}: {
+  title: string;
+  hint: string;
+  items: TagFrequencyItem[];
+  showCharWarn: boolean;
+  copied: string | null;
+  copyPrefix: string;
+  onCopy: (key: string, text: string) => void;
+}) {
+  const allKey = `${copyPrefix}-all`;
+  return (
+    <section className="rounded-2xl border border-indigo-400/15 bg-slate-950/50 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h2 className="text-base font-medium text-white">{title}</h2>
+        <button
+          type="button"
+          onClick={() => onCopy(allKey, items.map((i) => i.phrase).join("\n"))}
+          className="rounded-full border border-indigo-400/25 px-2.5 py-1 text-[11px] text-indigo-100 hover:border-indigo-300/40"
+        >
+          {copied === allKey ? "Copiat" : "Copy list"}
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+      <ul className="mt-4 max-h-80 space-y-1.5 overflow-auto">
+        {items.map((item) => {
+          const key = `${copyPrefix}-${item.phrase}`;
+          const over =
+            showCharWarn && item.phrase.length > ETSY_TAG_MAX_CHARS;
+          return (
+            <li
+              key={key}
+              className="flex items-center gap-2 rounded-lg border border-indigo-400/10 bg-slate-950/60 px-2.5 py-1.5"
+            >
+              <button
+                type="button"
+                onClick={() => onCopy(key, item.phrase)}
+                className="min-w-0 flex-1 text-left text-sm text-slate-200 hover:text-white"
+              >
+                {item.phrase}
+              </button>
+              <span className="shrink-0 font-mono text-[11px] text-slate-500">
+                {item.count}/{item.total}
+              </span>
+              {over && (
+                <span
+                  className="shrink-0 rounded border border-amber-500/40 px-1.5 py-0.5 text-[10px] text-amber-200"
+                  title={`Etsy Tags: max ${ETSY_TAG_MAX_CHARS} caractere`}
+                >
+                  {item.phrase.length}c
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function PhraseChip({
+  phrase,
+  copied,
+  copyKey,
+  onCopy,
+}: {
+  phrase: string;
+  copied: string | null;
+  copyKey: string;
+  onCopy: (key: string, text: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onCopy(copyKey, phrase)}
+      title={copied === copyKey ? "Copiat" : "Click to copy"}
+      className="rounded-full border border-slate-600/50 bg-slate-900/60 px-2.5 py-1 text-xs text-slate-300 transition hover:border-indigo-400/40 hover:text-white"
+    >
+      {phrase}
+    </button>
   );
 }
 
@@ -519,7 +751,7 @@ function ListingDetails({
         {report.seo.tags.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Tags
+              Tags SEO ({report.seo.tags.length})
             </h4>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {report.seo.tags.map((t) => (
@@ -549,24 +781,6 @@ function ListingDetails({
                 </span>
               ))}
             </div>
-          </div>
-        )}
-
-        {report.keywords.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Keyword candidates
-            </h4>
-            <ul className="mt-2 space-y-1 text-xs text-slate-400">
-              {report.keywords.slice(0, 20).map((k) => (
-                <li key={k.phrase}>
-                  {k.phrase}{" "}
-                  <span className="text-slate-600">
-                    ×{k.count} (n={k.n})
-                  </span>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 

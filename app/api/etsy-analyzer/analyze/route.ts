@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-const MAX_LISTINGS = 5;
+const MAX_LISTINGS = 10;
 const MAX_TOTAL_CHARS = 8_000_000;
 const MAX_ONE_CHARS = 4_000_000;
 

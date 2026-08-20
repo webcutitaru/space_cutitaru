@@ -7,12 +7,16 @@ export type {
 } from "./types/listing";
 export {
   buildBenchmarkInsight,
+  buildTagFrequency,
   scoreListing,
   strengthLabelRo,
 } from "./insight";
 export type {
   BenchmarkInsight,
   BenchmarkRange,
+  FrequencyGroup,
   ListingScore,
   StrengthLabel,
+  TagFrequencyItem,
+  TagSuggestions,
 } from "./insight";
