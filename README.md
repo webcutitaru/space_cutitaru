@@ -72,6 +72,7 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/link2pic` | Extract and download images from product page URLs |
 | `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
 | `/etsy-analyzer` | Paste 5–10 Etsy listing HTMLs; tag frequency (X/N) + Tags/Title suggestions |
+| `extensions/etsy-analyzer` | Chrome extension (Load unpacked) — capture listing tabs → same analyze API |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
 | `/api/link2pic/extract` | POST API for image URL extraction |

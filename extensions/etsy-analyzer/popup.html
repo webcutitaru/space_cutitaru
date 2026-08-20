@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Etsy Analyzer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">05 · Etsy Analyzer</div>
+      <p class="sub">Add listing tabs, then analyze on your Space API.</p>
+    </header>
+
+    <label class="field">
+      <span>API base</span>
+      <input id="apiBase" type="url" placeholder="https://space.cutitaru.com" />
+    </label>
+
+    <div class="actions">
+      <button id="addBtn" type="button">Add current listing</button>
+      <button id="analyzeBtn" type="button" class="primary">Analyze + send</button>
+    </div>
+    <div class="actions secondary">
+      <button id="sendBtn" type="button" class="ghost">Send to site</button>
+      <button id="clearBtn" type="button" class="ghost">Clear queue</button>
+    </div>
+    <div class="actions secondary">
+      <button id="openAppBtn" type="button" class="ghost">Open web app</button>
+    </div>
+
+    <p id="status" class="status" role="status"></p>
+
+    <section>
+      <h2>Queue <span id="queueCount">(0)</span></h2>
+      <ul id="queue" class="queue"></ul>
+    </section>
+
+    <section id="resultSection" class="hidden">
+      <h2>Result</h2>
+      <p id="headline" class="headline"></p>
+      <ul id="bullets" class="bullets"></ul>
+      <div id="tags" class="tags"></div>
+      <p id="warnings" class="warnings"></p>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

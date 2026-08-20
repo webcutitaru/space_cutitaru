@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   BenchmarkInsight,
   FrequencyGroup,
@@ -73,6 +73,72 @@ export function EtsyAnalyzerApp() {
     list.map((s, i) => ({ ...s, label: `Listing ${i + 1}` }));
 
   const filled = slots.filter((s) => s.html.trim()).length;
+
+  useEffect(() => {
+    const EXT = "etsy-analyzer-extension";
+    const APP = "etsy-analyzer-app";
+
+    function applyHandoff(data: {
+      htmls?: unknown;
+      titles?: unknown;
+      insight?: BenchmarkInsight | null;
+      warnings?: string[] | null;
+    }) {
+      const htmls = Array.isArray(data.htmls)
+        ? data.htmls.filter((h): h is string => typeof h === "string" && h.trim().length > 0)
+        : [];
+      if (htmls.length === 0) return;
+
+      const titles = Array.isArray(data.titles) ? data.titles : [];
+      const next = htmls.slice(0, MAX_SLOTS).map((html, i) => ({
+        id: `${uid}-ext-${i + 1}`,
+        label: `Listing ${i + 1}`,
+        html,
+      }));
+      while (next.length < 5) {
+        next.push(makeSlot(next.length + 1, `${uid}-ext-pad-${next.length + 1}`));
+      }
+      setSlots(relabel(next));
+
+      if (data.insight && typeof data.insight === "object") {
+        setInsight(data.insight);
+        const warns = [...(data.warnings ?? [])];
+        if (data.insight.listingsWithoutTags > 0) {
+          warns.push(
+            `${data.insight.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML.`,
+          );
+        }
+        setError(warns.length ? warns.join(" · ") : null);
+      } else {
+        setInsight(null);
+        setError(
+          `Primit ${htmls.length} listing(uri) din extensie${
+            titles.filter(Boolean).length
+              ? ` (${titles.filter((t) => typeof t === "string" && t).length} titluri)`
+              : ""
+          }. Apasă Analizează dacă vrei raportul pe site.`,
+        );
+      }
+
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("etsy-analyzer-slots")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window) return;
+      const data = event.data;
+      if (!data || data.source !== EXT || data.type !== "HANDOFF") return;
+      applyHandoff(data);
+      window.postMessage({ source: APP, type: "HANDOFF_ACK" }, "*");
+    }
+
+    window.addEventListener("message", onMessage);
+    window.postMessage({ source: APP, type: "READY" }, "*");
+    return () => window.removeEventListener("message", onMessage);
+  }, [uid]);
 
   function flashCopied(key: string) {
     setCopied(key);
@@ -188,10 +254,14 @@ export function EtsyAnalyzerApp() {
           </p>
         </header>
 
-        <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/60 p-5 backdrop-blur-md sm:p-6">
+        <section
+          id="etsy-analyzer-slots"
+          className="rounded-2xl border border-indigo-400/20 bg-slate-950/60 p-5 backdrop-blur-md sm:p-6"
+        >
           <h2 className="text-lg font-medium text-white">Listing-uri de referință</h2>
           <p className="mt-1 text-sm text-slate-400">
-            View Source / Save Page pe produs, apoi lipește sau încarcă fișierul.
+            View Source / Save Page, încarcă .html — sau folosește extensia Chrome
+            (Add listing → Analyze + send / Send to site).
           </p>
 
           <div className="mt-5 space-y-5">
