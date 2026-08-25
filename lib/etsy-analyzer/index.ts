@@ -16,7 +16,10 @@ export type {
   BenchmarkRange,
   FrequencyGroup,
   ListingScore,
+  RangeBarItem,
+  ScoreSeriesItem,
   StrengthLabel,
   TagFrequencyItem,
+  TagPresenceItem,
   TagSuggestions,
 } from "./insight";

@@ -10,7 +10,14 @@ import type {
   ListingScore,
   StrengthLabel,
   TagFrequencyItem,
+  TagPresenceItem,
 } from "@/lib/etsy-analyzer";
+import {
+  ComparisonCharts,
+  HighlightedTagChips,
+  intensityClasses,
+  tagIntensity,
+} from "@/components/etsy-analyzer/ComparisonCharts";
 
 const MAX_SLOTS = 10;
 const ETSY_TAG_MAX_CHARS = 20;
@@ -103,9 +110,16 @@ export function EtsyAnalyzerApp() {
       if (data.insight && typeof data.insight === "object") {
         setInsight(data.insight);
         const warns = [...(data.warnings ?? [])];
-        if (data.insight.listingsWithoutTags > 0) {
+        if (
+          data.insight.listingsWithoutTags > 0 &&
+          data.insight.listingsWithoutTags === data.insight.reports.length
+        ) {
           warns.push(
-            `${data.insight.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML.`,
+            "Niciun listing nu are tag-uri SEO — recapturează de pe pagina de produs.",
+          );
+        } else if (data.insight.listingsWithoutTags > 0) {
+          warns.push(
+            `${data.insight.listingsWithoutTags}/${data.insight.reports.length} listing(uri) fără tag-uri SEO (restul sunt OK).`,
           );
         }
         setError(warns.length ? warns.join(" · ") : null);
@@ -176,9 +190,16 @@ export function EtsyAnalyzerApp() {
 
       setInsight(data.insight);
       const warns = [...(data.warnings ?? [])];
-      if (data.insight.listingsWithoutTags > 0) {
+      if (
+        data.insight.listingsWithoutTags > 0 &&
+        data.insight.listingsWithoutTags === data.insight.reports.length
+      ) {
         warns.push(
-          `${data.insight.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML.`,
+          "Niciun listing nu are tag-uri SEO — recapturează de pe pagina de produs.",
+        );
+      } else if (data.insight.listingsWithoutTags > 0) {
+        warns.push(
+          `${data.insight.listingsWithoutTags}/${data.insight.reports.length} listing(uri) fără tag-uri SEO (restul sunt OK).`,
         );
       }
       if (warns.length) {
@@ -199,9 +220,14 @@ export function EtsyAnalyzerApp() {
       plainBullets: insight.plainBullets,
       sharedPhrases: insight.sharedPhrases,
       tagFrequency: insight.tagFrequency,
+      tagPresence: insight.tagPresence,
+      titleKeywordFrequency: insight.titleKeywordFrequency,
+      scoreSeries: insight.scoreSeries,
+      rangeBars: insight.rangeBars,
       frequencyGroups: insight.frequencyGroups,
       suggestions: insight.suggestions,
       listingsWithoutTags: insight.listingsWithoutTags,
+      listingsWithoutTagsIndexes: insight.listingsWithoutTagsIndexes,
       ranges: insight.ranges,
       usableAsReference: insight.usableAsReference,
       referenceNote: insight.referenceNote,
@@ -346,6 +372,13 @@ export function EtsyAnalyzerApp() {
 
             <VerdictBlock insight={insight} />
 
+            <ComparisonCharts
+              tagPresence={insight.tagPresence ?? []}
+              titleKeywordFrequency={insight.titleKeywordFrequency ?? []}
+              scoreSeries={insight.scoreSeries ?? []}
+              rangeBars={insight.rangeBars ?? []}
+            />
+
             {insight.frequencyGroups.length > 0 && (
               <FrequencyGroupsBlock
                 groups={insight.frequencyGroups}
@@ -363,34 +396,6 @@ export function EtsyAnalyzerApp() {
               />
             )}
 
-            {insight.ranges.length > 0 && (
-              <details className="rounded-2xl border border-indigo-400/15 bg-slate-950/50 open:pb-4">
-                <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-indigo-100 marker:content-none [&::-webkit-details-marker]:hidden">
-                  Intervale numerice (preț, favorite, coșuri…)
-                </summary>
-                <ul className="space-y-3 border-t border-indigo-400/10 px-5 pt-4">
-                  {insight.ranges.map((r) => (
-                    <li key={r.label}>
-                      <p className="text-sm text-white">
-                        <span className="font-semibold">{r.label}</span>
-                        {r.min != null && r.max != null && (
-                          <span className="text-slate-400">
-                            {" "}
-                            {r.min === r.max ? r.min : `${r.min}–${r.max}`}
-                            {r.median != null && r.min !== r.max
-                              ? ` · mediană ${r.median}`
-                              : ""}
-                            {r.unit ? ` ${r.unit}` : ""}
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-400">{r.note}</p>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-
             <h2 className="pt-2 text-lg font-medium text-white">
               Date pe fiecare listing
             </h2>
@@ -400,6 +405,8 @@ export function EtsyAnalyzerApp() {
                 report={report}
                 score={insight.scores[i]!}
                 index={i}
+                tagPresence={insight.tagPresence ?? []}
+                totalListings={insight.reports.length}
               />
             ))}
           </div>
@@ -621,6 +628,8 @@ function FrequencyGroupsBlock({
                   <PhraseChip
                     key={`${g.count}-${p}`}
                     phrase={p}
+                    count={g.count}
+                    total={g.total}
                     copied={copied}
                     copyKey={`p-${g.count}-${p}`}
                     onCopy={onCopy}
@@ -739,23 +748,34 @@ function SuggestionColumn({
 
 function PhraseChip({
   phrase,
+  count,
+  total,
   copied,
   copyKey,
   onCopy,
 }: {
   phrase: string;
+  count?: number;
+  total?: number;
   copied: string | null;
   copyKey: string;
   onCopy: (key: string, text: string) => void;
 }) {
+  const intensity =
+    count != null && total != null ? tagIntensity(count, total) : "unique";
   return (
     <button
       type="button"
       onClick={() => onCopy(copyKey, phrase)}
       title={copied === copyKey ? "Copiat" : "Click to copy"}
-      className="rounded-full border border-slate-600/50 bg-slate-900/60 px-2.5 py-1 text-xs text-slate-300 transition hover:border-indigo-400/40 hover:text-white"
+      className={`rounded-full border px-2.5 py-1 text-xs transition hover:brightness-110 ${intensityClasses(intensity)}`}
     >
       {phrase}
+      {count != null && total != null && (
+        <span className="ml-1 font-mono opacity-70">
+          {count}/{total}
+        </span>
+      )}
     </button>
   );
 }
@@ -764,13 +784,23 @@ function ListingDetails({
   report,
   score,
   index,
+  tagPresence,
+  totalListings,
 }: {
   report: ListingReport;
   score: ListingScore;
   index: number;
+  tagPresence: TagPresenceItem[];
+  totalListings: number;
 }) {
   const title = report.identity.title || `Listing ${index + 1}`;
   const short = title.length > 80 ? `${title.slice(0, 79)}…` : title;
+  const presenceByPhrase = new Map(
+    tagPresence.map((t) => [
+      t.phrase.trim().toLowerCase().replace(/\s+/g, " "),
+      { count: t.count, total: t.total },
+    ]),
+  );
 
   return (
     <details className="rounded-2xl border border-indigo-400/15 bg-slate-950/50">
@@ -778,6 +808,7 @@ function ListingDetails({
         <span className="text-sm font-medium text-white">Detalii — {short}</span>
         <span className="text-xs text-slate-500">
           scor {score.score} · {report.identity.listingId || "fără ID"}
+          {report.seo.tags.length === 0 ? " · fără tags" : ""}
         </span>
       </summary>
       <div className="space-y-4 border-t border-indigo-400/10 px-5 py-4 text-sm">
@@ -818,23 +849,18 @@ function ListingDetails({
           </dl>
         </div>
 
-        {report.seo.tags.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Tags SEO ({report.seo.tags.length})
-            </h4>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {report.seo.tags.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-slate-600/40 px-2 py-0.5 text-xs text-slate-300"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Tags SEO ({report.seo.tags.length}) — evidențiate după frecvență în set
+          </h4>
+          <div className="mt-2">
+            <HighlightedTagChips
+              tags={report.seo.tags}
+              presenceByPhrase={presenceByPhrase}
+              total={totalListings}
+            />
           </div>
-        )}
+        </div>
 
         {report.knownSignals.badges.length > 0 && (
           <div>

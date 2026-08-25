@@ -97,6 +97,40 @@ button.primary {
   color: #f7f2ea;
 }
 
+button.accent {
+  width: 100%;
+  margin-top: 8px;
+  background: #2c4a3a;
+  border-color: #2c4a3a;
+  color: #f3f7f4;
+}
+
+.auto-box {
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 248, 0.55);
+}
+
+.auto-box .hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.field.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.field.inline input {
+  width: 64px;
+}
+
 button.ghost {
   background: transparent;
 }
@@ -213,7 +247,62 @@ h2 {
 }
 
 .warnings {
-  margin: 0;
+  margin: 0 0 10px;
   color: var(--warn);
   font-size: 12px;
+}
+
+.meta-line {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.bars {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.bar-row {
+  display: grid;
+  gap: 3px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.bar-label span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.bar-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e6dfd2;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #2c4a3a;
+}
+
+button.full-report {
+  width: 100%;
+  margin-top: 4px;
 }

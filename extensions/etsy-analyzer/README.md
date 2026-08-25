@@ -1,26 +1,16 @@
 # Etsy Analyzer — Chrome extension (local)
 
-Captures open Etsy listing pages and sends HTML to Space’s analyzer API / web UI.
+Captures Etsy listing pages (manually or from search) and shows a short comparative summary; opens the full report on Space.
 
-## Install (Load unpacked)
+## Install
 
-1. Open Chrome → `chrome://extensions`
-2. Enable **Developer mode**
-3. **Load unpacked** → select this folder
-4. After updates: click **Reload** on the extension card
+1. `chrome://extensions` → Developer mode → **Load unpacked** → this folder
+2. After updates: **Reload** (v1.3.0+)
 
 ## Use
 
-1. Open 1–10 Etsy **product** tabs (`etsy.com/listing/…`)
-2. Popup → **Add current listing** on each
-3. API base: `https://space.cutitaru.com` (or `http://localhost:3000` / `:3001`)
-4. **Analyze + send** — runs the API, then fills `/etsy-analyzer` (slots + insight)
-5. **Send to site** — only fills the HTML slots on the web app (no new API call)
+1. **Add current listing** and/or **Add from search** (max 10)
+2. **Analyze** — short summary in the popup (top shared tags as mini-bars)
+3. **Open full report** — analyzes (if needed) and opens `/etsy-analyzer` with charts + highlighted keywords
 
-The web app must include the handoff listener (deployed Space or local Next). Reload the extension after pulling these files.
-
-## Notes
-
-- Max 10 listings
-- Duplicate listing IDs are skipped
-- Large HTML batches can take a few seconds
+API base: `https://space.cutitaru.com` (or localhost).

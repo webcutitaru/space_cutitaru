@@ -9,7 +9,7 @@
   <body>
     <header>
       <div class="brand">05 · Etsy Analyzer</div>
-      <p class="sub">Add listing tabs, then analyze on your Space API.</p>
+      <p class="sub">Queue listings → short summary here → full report on site.</p>
     </header>
 
     <label class="field">
@@ -19,13 +19,24 @@
 
     <div class="actions">
       <button id="addBtn" type="button">Add current listing</button>
-      <button id="analyzeBtn" type="button" class="primary">Analyze + send</button>
+      <button id="analyzeBtn" type="button" class="primary">Analyze</button>
     </div>
+
+    <section class="auto-box">
+      <h2>Search automation</h2>
+      <p class="hint">
+        On an Etsy search / market page: opens each product in a background tab,
+        extracts SEO tags, adds to queue (max 10).
+      </p>
+      <label class="field inline">
+        <span>Max</span>
+        <input id="searchLimit" type="number" min="1" max="10" value="10" />
+      </label>
+      <button id="searchBtn" type="button" class="accent">Add from search</button>
+    </section>
+
     <div class="actions secondary">
-      <button id="sendBtn" type="button" class="ghost">Send to site</button>
       <button id="clearBtn" type="button" class="ghost">Clear queue</button>
-    </div>
-    <div class="actions secondary">
       <button id="openAppBtn" type="button" class="ghost">Open web app</button>
     </div>
 
@@ -37,11 +48,15 @@
     </section>
 
     <section id="resultSection" class="hidden">
-      <h2>Result</h2>
+      <h2>Summary</h2>
+      <p id="metaLine" class="meta-line"></p>
       <p id="headline" class="headline"></p>
       <ul id="bullets" class="bullets"></ul>
-      <div id="tags" class="tags"></div>
+      <div id="bars" class="bars"></div>
       <p id="warnings" class="warnings"></p>
+      <button id="fullReportBtn" type="button" class="primary full-report">
+        Open full report
+      </button>
     </section>
 
     <script src="popup.js"></script>

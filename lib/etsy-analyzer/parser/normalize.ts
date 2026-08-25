@@ -406,9 +406,48 @@ function titleFromJsonLd(jsonLd: JsonLdExtract): string | undefined {
   return undefined
 }
 
+function listingTagCount(obj: Record<string, JsonValue>): number {
+  return asStringArray(getCI(obj, 'tags', 'tag_list')).length
+}
+
 function bestListing(appState: AppStateExtract): Record<string, JsonValue> | null {
   if (!appState.listingCandidates.length) return null
-  return [...appState.listingCandidates].sort((a, b) => Object.keys(b).length - Object.keys(a).length)[0]
+  return [...appState.listingCandidates].sort((a, b) => {
+    const tagDiff = listingTagCount(b) - listingTagCount(a)
+    if (tagDiff !== 0) return tagDiff
+    return Object.keys(b).length - Object.keys(a).length
+  })[0]!
+}
+
+/** Collect SEO tags from the best listing, then any other candidate that has tags. */
+function collectSeoTags(
+  listing: Record<string, JsonValue> | null,
+  appState: AppStateExtract,
+): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+
+  const pushAll = (raw: string[]) => {
+    for (const t of raw) {
+      const key = t.trim().toLowerCase().replace(/\s+/g, ' ')
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      out.push(t.trim().replace(/\s+/g, ' '))
+      if (out.length >= 13) return true
+    }
+    return false
+  }
+
+  if (listing && pushAll(asStringArray(getCI(listing, 'tags', 'tag_list')))) {
+    return out
+  }
+
+  for (const candidate of appState.listingCandidates) {
+    if (candidate === listing) continue
+    if (pushAll(asStringArray(getCI(candidate, 'tags', 'tag_list')))) break
+  }
+
+  return out
 }
 
 export function normalizeReport(input: {
@@ -449,19 +488,7 @@ export function normalizeReport(input: {
   const slug = url?.match(/\/listing\/\d+\/([^/?#]+)/)?.[1]
 
   // Only the listing's SEO tags (up to 13). DOM /market chips stay in sources.dom.tags.
-  const tags = (() => {
-    const fromListing = listing ? asStringArray(getCI(listing, 'tags', 'tag_list')) : []
-    const seen = new Set<string>()
-    const out: string[] = []
-    for (const t of fromListing) {
-      const key = t.trim().toLowerCase().replace(/\s+/g, ' ')
-      if (!key || seen.has(key)) continue
-      seen.add(key)
-      out.push(t.trim().replace(/\s+/g, ' '))
-      if (out.length >= 13) break
-    }
-    return out
-  })()
+  const tags = collectSeoTags(listing, appState)
 
   const materials = (() => {
     const fromListing = listing ? asStringArray(getCI(listing, 'materials', 'material')) : []

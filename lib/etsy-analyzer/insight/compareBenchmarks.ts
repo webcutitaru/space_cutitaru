@@ -1,7 +1,15 @@
 import type { ListingReport } from '../types/listing'
 import { scoreListing } from './scoreListing'
-import { buildTagFrequency } from './tagFrequency'
-import type { BenchmarkInsight, BenchmarkRange } from './types'
+import {
+  buildTagFrequency,
+  buildTitleKeywordFrequency,
+} from './tagFrequency'
+import type {
+  BenchmarkInsight,
+  BenchmarkRange,
+  RangeBarItem,
+  ScoreSeriesItem,
+} from './types'
 
 function median(nums: number[]): number | undefined {
   if (nums.length === 0) return undefined
@@ -30,6 +38,7 @@ function fmtNum(n: number): string {
 export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsight {
   const scores = reports.map(scoreListing)
   const tagResult = buildTagFrequency(reports)
+  const titleKeywordFrequency = buildTitleKeywordFrequency(reports)
   const phrases = tagResult.tagFrequency
     .filter((t) => t.count >= Math.min(2, reports.length))
     .slice(0, 12)
@@ -64,11 +73,34 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
   })
   if (revR) ranges.push(revR)
 
+  const rangeBars: RangeBarItem[] = ranges
+    .filter(
+      (r): r is BenchmarkRange & { min: number; max: number; median: number } =>
+        r.min != null && r.max != null && r.median != null,
+    )
+    .map((r) => ({
+      label: r.label,
+      min: r.min,
+      max: r.max,
+      median: r.median,
+      unit: r.unit,
+      note: r.note,
+    }))
+
+  const scoreSeries: ScoreSeriesItem[] = scores.map((s, i) => ({
+    label: truncate(s.title || `Listing ${i + 1}`, 48),
+    listingId: s.listingId,
+    score: s.score,
+    strength: s.strength,
+    hasSeoTags: reports[i]!.seo.tags.length > 0,
+  }))
+
   const bestCount = scores.filter((s) => s.strength === 'referinta' || s.strength === 'puternic').length
   const usableAsReference = bestCount >= 1 && (reports.length === 1 ? scores[0]!.score >= 45 : bestCount >= 1)
 
   const top = [...scores].sort((a, b) => b.score - a.score)[0]!
   const weak = scores.filter((s) => s.strength === 'slab')
+  const withTags = reports.length - tagResult.listingsWithoutTags
 
   const headline =
     reports.length === 1
@@ -101,9 +133,13 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
         ? `Tag-uri SEO extrase: ${phrases.slice(0, 5).join(', ')}.`
         : `Tag-uri care se repetă la mai multe listing-uri: ${phrases.slice(0, 5).join(', ')}. Alege manual după relevanța produsului tău.`,
     )
+  } else if (tagResult.listingsWithoutTags === reports.length) {
+    plainBullets.push(
+      'Niciun listing din set nu are tag-uri SEO în HTML — redeschide pagina de produs (nu search) și recapturează.',
+    )
   } else if (tagResult.listingsWithoutTags > 0) {
     plainBullets.push(
-      `${tagResult.listingsWithoutTags} listing(uri) fără tag-uri SEO în HTML — View Source pe pagina de produs, nu pe search.`,
+      `${withTags}/${reports.length} listing-uri au tag-uri SEO; ${tagResult.listingsWithoutTags} fără tags — comparativul folosește cele cu tags.`,
     )
   }
 
@@ -138,9 +174,14 @@ export function buildBenchmarkInsight(reports: ListingReport[]): BenchmarkInsigh
     plainBullets: plainBullets.slice(0, 5),
     sharedPhrases: phrases,
     tagFrequency: tagResult.tagFrequency,
+    tagPresence: tagResult.tagPresence,
+    titleKeywordFrequency,
+    scoreSeries,
+    rangeBars,
     frequencyGroups: tagResult.frequencyGroups,
     suggestions: tagResult.suggestions,
     listingsWithoutTags: tagResult.listingsWithoutTags,
+    listingsWithoutTagsIndexes: tagResult.listingsWithoutTagsIndexes,
     ranges,
     usableAsReference,
     referenceNote,
