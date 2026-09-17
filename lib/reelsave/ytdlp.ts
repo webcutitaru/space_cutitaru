@@ -11,13 +11,23 @@ function ytdlpErrorHint(stderr: string): string {
   if (/command not found|enoent/i.test(stderr)) {
     return "yt-dlp is not installed on the server.";
   }
-  if (/private|login required|cookies/i.test(stderr)) {
-    return "This video is private or requires login.";
+  if (
+    /private|login required|cookies|empty media response|sign in/i.test(stderr)
+  ) {
+    return (
+      "This Instagram video needs a logged-in session. " +
+      "Open the Reel while logged in and use the Chrome extension, " +
+      "or set YTDLP_COOKIES_FILE on the server."
+    );
   }
   if (/unsupported url|no video/i.test(stderr)) {
     return "No downloadable video found at this link.";
   }
   return stderr.trim().split("\n").pop() ?? "yt-dlp failed.";
+}
+
+function cookieArgs(cookiesPath?: string): string[] {
+  return cookiesPath ? ["--cookies", cookiesPath] : [];
 }
 
 function runYtdlp(
@@ -81,9 +91,19 @@ function runYtdlp(
   });
 }
 
-export async function fetchVideoInfo(pageUrl: string): Promise<YtdlpInfo> {
+export async function fetchVideoInfo(
+  pageUrl: string,
+  cookiesPath?: string,
+): Promise<YtdlpInfo> {
   const { stdout } = await runYtdlp(
-    ["--no-playlist", "--no-warnings", "-j", "--no-check-certificates", pageUrl],
+    [
+      "--no-playlist",
+      "--no-warnings",
+      "-j",
+      "--no-check-certificates",
+      ...cookieArgs(cookiesPath),
+      pageUrl,
+    ],
     EXTRACT_TIMEOUT_MS,
   );
 
@@ -102,6 +122,7 @@ export async function fetchVideoInfo(pageUrl: string): Promise<YtdlpInfo> {
 export function streamVideoDownload(
   pageUrl: string,
   formatId: string,
+  cookiesPath?: string,
 ): { stream: NodeJS.ReadableStream; kill: () => void } {
   const child = spawn(
     YTDLP_PATH,
@@ -109,6 +130,7 @@ export function streamVideoDownload(
       "--no-playlist",
       "--no-warnings",
       "--no-check-certificates",
+      ...cookieArgs(cookiesPath),
       "-f",
       `${formatId}+bestaudio/best`,
       "--merge-output-format",

@@ -71,15 +71,17 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/image-converter` | JPEG/PNG → WebP converter (hybrid client preview + server export) |
 | `/link2pic` | Extract and download images from product page URLs |
 | `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
+| `extensions/reelsave` | Chrome extension (Load unpacked) — current-tab URL + Instagram session cookies → same ReelSave API |
 | `/etsy-analyzer` | Paste 5–10 Etsy listing HTMLs; tag frequency (X/N) + Tags/Title suggestions |
 | `extensions/etsy-analyzer` | Chrome extension (Load unpacked) — capture listing tabs → same analyze API |
+| `extensions/shopify-importer` | Chrome extension (Load unpacked) — scan a Shopify storefront, tick products, import into your store |
 | `/api/reviews/extract` | POST API for review extraction |
 | `/api/image-convert/export` | POST multipart API for HQ WebP export |
 | `/api/link2pic/extract` | POST API for image URL extraction |
 | `/api/link2pic/proxy` | GET proxy for CORS-safe image download |
 | `/api/link2pic/meta` | GET image metadata (size, dimensions) |
-| `/api/reelsave/extract` | POST API for Instagram/TikTok video metadata |
-| `/api/reelsave/download` | GET stream video download |
+| `/api/reelsave/extract` | POST API for Instagram/TikTok video metadata (optional `cookies` for Instagram) |
+| `/api/reelsave/download` | GET/POST stream video download (`cookieTicket` from extract for Instagram) |
 | `/api/etsy-analyzer/analyze` | POST HTML array → benchmark insight |
 | `/api/reelsave/thumbnail` | GET thumbnail proxy |
 
@@ -176,18 +178,24 @@ Paste a public Instagram post/Reel or TikTok video URL. Returns metadata (title,
 POST `/api/reelsave/extract` with JSON body:
 
 ```json
-{ "pageUrl": "https://www.tiktok.com/@user/video/123" }
+{ "pageUrl": "https://www.tiktok.com/@user/video/123", "cookies": "sessionid=…; csrftoken=…" }
 ```
 
-GET `/api/reelsave/download?pageUrl=&formatId=` — stream MP4 download (server-side via yt-dlp).
+`cookies` is optional (Instagram only). When provided, the response may include `cookieTicket` for the download step.
+
+GET `/api/reelsave/download?pageUrl=&formatId=&cookieTicket=` — stream MP4 download (server-side via yt-dlp).
+
+POST `/api/reelsave/download` with JSON `{ pageUrl, formatId, cookies? }` — same stream when cookies must be sent in the body.
 
 GET `/api/reelsave/thumbnail?url=` — thumbnail proxy for preview.
 
-**Server requirements:** `yt-dlp` and `ffmpeg` on PATH (installed automatically by `deploy/deploy.sh`). Optional env: `YTDLP_PATH`.
+**Server requirements:** `yt-dlp` and `ffmpeg` on PATH (installed automatically by `deploy/deploy.sh`). Optional env: `YTDLP_PATH`, `YTDLP_COOKIES_FILE` (Netscape cookies for Instagram when not using the extension).
+
+**Chrome extension:** `extensions/reelsave` — Load unpacked; uses your logged-in Instagram cookies automatically.
 
 Supported links:
 
-- **Instagram** — public posts and Reels
+- **Instagram** — public posts and Reels (many need login cookies via extension or `YTDLP_COOKIES_FILE`)
 - **TikTok** — `tiktok.com`, `vm.tiktok.com`, `vt.tiktok.com`
 
 Limits:

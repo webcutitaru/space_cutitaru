@@ -8,7 +8,10 @@ export async function POST(request: Request) {
   try {
     checkRateLimit(`extract:${clientIp(request)}`);
 
-    const body = (await request.json()) as { pageUrl?: string };
+    const body = (await request.json()) as {
+      pageUrl?: string;
+      cookies?: string;
+    };
 
     if (!body.pageUrl?.trim()) {
       return NextResponse.json(
@@ -17,7 +20,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await extractVideo(body.pageUrl);
+    const cookieHeader =
+      typeof body.cookies === "string" && body.cookies.trim()
+        ? body.cookies
+        : request.headers.get("x-reelsave-cookies");
+
+    const result = await extractVideo(body.pageUrl, cookieHeader);
     return NextResponse.json(result);
   } catch (error) {
     const message =
@@ -27,7 +35,8 @@ export async function POST(request: Request) {
       ? 429
       : message.includes("not supported") ||
           message.includes("required") ||
-          message.includes("Invalid")
+          message.includes("Invalid") ||
+          message.includes("too large")
         ? 400
         : 500;
 

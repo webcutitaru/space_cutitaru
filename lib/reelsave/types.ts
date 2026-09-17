@@ -48,6 +48,8 @@ export type ExtractResult = {
   height?: number;
   ext: string;
   filename: string;
+  /** Short-lived server ticket so GET download can reuse Instagram cookies. */
+  cookieTicket?: string;
   warnings?: string[];
   meta: { durationMs: number };
 };

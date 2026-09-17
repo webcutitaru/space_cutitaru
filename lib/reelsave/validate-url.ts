@@ -64,6 +64,11 @@ export function validatePageUrl(raw: string): { url: URL; platform: Platform } {
     );
   }
 
+  if (platform === "instagram") {
+    // yt-dlp handles /reel/ more reliably than plural /reels/
+    url.pathname = url.pathname.replace(/^\/reels\//i, "/reel/");
+  }
+
   return { url, platform };
 }
 

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReelSave</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">04 · ReelSave</div>
+      <p class="sub">Instagram Reels &amp; TikTok — via Space.</p>
+    </header>
+
+    <label class="field">
+      <span>API base</span>
+      <input id="apiBase" type="url" placeholder="https://space.cutitaru.com" />
+    </label>
+
+    <label class="field">
+      <span>Video URL</span>
+      <input
+        id="pageUrl"
+        type="url"
+        placeholder="https://www.instagram.com/reel/…"
+      />
+    </label>
+
+    <div class="actions">
+      <button id="useTabBtn" type="button" class="ghost">Use current tab</button>
+      <button id="extractBtn" type="button" class="primary">Get video</button>
+    </div>
+
+    <div class="actions secondary">
+      <button id="openAppBtn" type="button" class="ghost">Open web app</button>
+    </div>
+
+    <p id="igHint" class="hint hidden"></p>
+    <p id="status" class="status" role="status"></p>
+
+    <section id="resultSection" class="result hidden">
+      <div class="preview-row">
+        <img id="thumb" class="thumb hidden" alt="" />
+        <div class="meta">
+          <p id="uploader" class="uploader"></p>
+          <p id="title" class="title"></p>
+          <p id="stats" class="stats"></p>
+        </div>
+      </div>
+      <p id="warnings" class="warnings"></p>
+      <button id="downloadBtn" type="button" class="primary full">
+        Download
+      </button>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
