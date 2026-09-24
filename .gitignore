@@ -32,6 +32,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# visit notification rate limit
+/data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
