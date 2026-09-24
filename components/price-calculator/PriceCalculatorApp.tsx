@@ -40,6 +40,10 @@ function money(amount: number, currency: "USD" | "EUR" | "CNY"): string {
   }).format(amount);
 }
 
+function minus(amount: number): string {
+  return `−${money(amount, "EUR")}`;
+}
+
 function num(value: string): number {
   const parsed = Number(value.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : NaN;
@@ -442,17 +446,18 @@ export function PriceCalculatorApp() {
                 </p>
               )}
               {selectedOk && (
-                <dl className="mt-5 space-y-2 border-t border-slate-800 pt-4 text-sm">
-                  <Row label="Subtotal" value={money(selectedOk.subtotalEur, "EUR")} />
-                  <Row
-                    label="Conversie"
-                    value={`−${money(selectedOk.conversionEur, "EUR")}`}
-                  />
-                  <Row label="Rămâi cu" value={money(selectedOk.profitEur, "EUR")} />
-                  <Row label="Produs" value={money(selectedOk.productEur, "EUR")} />
-                  <Row label="Livrare" value={money(selectedOk.shippingEur, "EUR")} />
-                  <Row label="Comision" value={money(selectedOk.feeEur, "EUR")} />
-                </dl>
+                <div className="mt-5 border-t border-slate-800 pt-4 text-sm">
+                  <dl className="space-y-2">
+                    <Row label="Subtotal" value={money(selectedOk.subtotalEur, "EUR")} />
+                    <Row label="Conversie" value={minus(selectedOk.conversionEur)} />
+                    <Row label="Comision" value={minus(selectedOk.feeEur)} />
+                    <Row label="Produs" value={minus(selectedOk.productEur)} />
+                    <Row label="Livrare" value={minus(selectedOk.shippingEur)} />
+                  </dl>
+                  <dl className="mt-3 space-y-2 border-t border-slate-700 pt-3">
+                    <Row label="Rămâi cu" value={money(selectedOk.profitEur, "EUR")} />
+                  </dl>
+                </div>
               )}
             </section>
           </aside>
