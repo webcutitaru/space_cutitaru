@@ -24,7 +24,7 @@ export async function GET() {
     const data = (await response.json()) as FrankfurterResponse;
     const cny = data.rates?.CNY;
     const eur = data.rates?.EUR;
-    if (!(cny > 0) || !(eur > 0) || !data.date) {
+    if (cny == null || eur == null || cny <= 0 || eur <= 0 || !data.date) {
       return NextResponse.json({ error: "Rate lookup failed." }, { status: 502 });
     }
 
