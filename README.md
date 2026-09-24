@@ -73,6 +73,7 @@ sudo certbot --nginx -d space.cutitaru.com
 | `/reelsave` | Download Instagram Reels and TikTok videos without watermark |
 | `extensions/reelsave` | Chrome extension (Load unpacked) — current-tab URL + Instagram session cookies → same ReelSave API |
 | `/etsy-analyzer` | Paste 5–10 Etsy listing HTMLs; tag frequency (X/N) + Tags/Title suggestions |
+| `/price-calculator` | Sell price in USD from CNY cost, shipping, commission, and EUR payout |
 | `extensions/etsy-analyzer` | Chrome extension (Load unpacked) — capture listing tabs → same analyze API |
 | `extensions/shopify-importer` | Chrome extension (Load unpacked) — scan a Shopify storefront, tick products, import into your store |
 | `/api/reviews/extract` | POST API for review extraction |
