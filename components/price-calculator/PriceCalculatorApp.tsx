@@ -108,7 +108,9 @@ export function PriceCalculatorApp() {
           date?: string;
           error?: string;
         };
-        if (!response.ok || !(data.cnyPerUsd > 0) || !(data.eurPerUsd > 0)) {
+        const cnyPerUsd = data.cnyPerUsd;
+        const eurPerUsd = data.eurPerUsd;
+        if (!response.ok || cnyPerUsd == null || eurPerUsd == null || cnyPerUsd <= 0 || eurPerUsd <= 0) {
           throw new Error(data.error || "failed");
         }
         if (cancelled) return;
@@ -116,8 +118,8 @@ export function PriceCalculatorApp() {
           ...prev,
           rates: {
             ...prev.rates,
-            cnyPerUsd: String(data.cnyPerUsd),
-            eurPerUsd: String(data.eurPerUsd),
+            cnyPerUsd: String(cnyPerUsd),
+            eurPerUsd: String(eurPerUsd),
           },
         }));
         setRateNote(data.date ? `Curs din ${data.date}` : "Curs actualizat");
