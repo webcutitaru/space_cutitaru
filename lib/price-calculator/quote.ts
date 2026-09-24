@@ -10,8 +10,10 @@ export type FeeSettings = {
 export type Rates = {
   /** How many CNY equal 1 USD. */
   cnyPerUsd: number;
-  /** Euros received per 1 USD after conversion. */
+  /** Market euros per 1 USD, before the conversion charge. */
   eurPerUsd: number;
+  /** Percent kept on the currency conversion. */
+  conversionPercent: number;
 };
 
 export type QuoteInput = {
@@ -33,6 +35,8 @@ export type Quote = {
   shippingEur: number;
   feeUsd: number;
   feeEur: number;
+  subtotalEur: number;
+  conversionEur: number;
 };
 
 export type QuoteResult = Quote | { error: string };
@@ -45,7 +49,8 @@ export const DEFAULT_FEES: FeeSettings = {
 
 export const DEFAULT_RATES: Rates = {
   cnyPerUsd: 7.2,
-  eurPerUsd: 0.846,
+  eurPerUsd: 0.85,
+  conversionPercent: 3,
 };
 
 /**
@@ -58,6 +63,9 @@ export function quoteSellPrice(input: QuoteInput): QuoteResult {
 
   if (!(rates.cnyPerUsd > 0) || !(rates.eurPerUsd > 0)) {
     return { error: "Cursul trebuie să fie mai mare decât zero." };
+  }
+  if (rates.conversionPercent < 0 || rates.conversionPercent >= 100) {
+    return { error: "Conversia trebuie să fie între 0 și 100." };
   }
   if (
     input.desiredProfitEur < 0 ||
@@ -74,13 +82,14 @@ export function quoteSellPrice(input: QuoteInput): QuoteResult {
     return { error: "Comisionul e prea mare. Pune un procent sub 100." };
   }
 
+  const receivedPerUsd = rates.eurPerUsd * (1 - rates.conversionPercent / 100);
   const productUsd = input.productCostCny / rates.cnyPerUsd;
   const shippingUsd =
     input.shippingCurrency === "CNY"
       ? input.shippingCost / rates.cnyPerUsd
       : input.shippingCost;
   const targetNetUsd =
-    input.desiredProfitEur / rates.eurPerUsd + productUsd + shippingUsd;
+    input.desiredProfitEur / receivedPerUsd + productUsd + shippingUsd;
 
   const raw = (targetNetUsd + fees.fixedFeeUsd) / (1 - rate);
   if (!Number.isFinite(raw) || raw < 0) {
@@ -90,9 +99,10 @@ export function quoteSellPrice(input: QuoteInput): QuoteResult {
   const sellPriceUsd = Math.ceil(raw * 100 - 1e-9) / 100;
   const feeUsd = rate * sellPriceUsd + fees.fixedFeeUsd;
   const netUsd = sellPriceUsd - feeUsd;
-  const payoutEur = netUsd * rates.eurPerUsd;
-  const productEur = productUsd * rates.eurPerUsd;
-  const shippingEur = shippingUsd * rates.eurPerUsd;
+  const subtotalEur = netUsd * rates.eurPerUsd;
+  const payoutEur = netUsd * receivedPerUsd;
+  const productEur = productUsd * receivedPerUsd;
+  const shippingEur = shippingUsd * receivedPerUsd;
 
   return {
     sellPriceUsd,
@@ -103,6 +113,8 @@ export function quoteSellPrice(input: QuoteInput): QuoteResult {
     shippingUsd,
     shippingEur,
     feeUsd,
-    feeEur: feeUsd * rates.eurPerUsd,
+    feeEur: feeUsd * receivedPerUsd,
+    subtotalEur,
+    conversionEur: subtotalEur - payoutEur,
   };
 }

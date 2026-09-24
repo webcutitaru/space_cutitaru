@@ -13,7 +13,7 @@ import {
   type ShippingCurrency,
 } from "@/lib/price-calculator/quote";
 
-const STORAGE_KEY = "price-calculator-v2";
+const STORAGE_KEY = "price-calculator-v3";
 
 type ShippingMethod = {
   id: string;
@@ -25,7 +25,7 @@ type ShippingMethod = {
 type Draft = {
   profit: string;
   product: string;
-  rates: { cnyPerUsd: string; eurPerUsd: string };
+  rates: { cnyPerUsd: string; eurPerUsd: string; conversionPercent: string };
   fees: { commissionPercent: string; fixedFeeUsd: string };
   methods: ShippingMethod[];
   selectedId: string;
@@ -53,6 +53,7 @@ function defaultDraft(): Draft {
     rates: {
       cnyPerUsd: String(DEFAULT_RATES.cnyPerUsd),
       eurPerUsd: String(DEFAULT_RATES.eurPerUsd),
+      conversionPercent: String(DEFAULT_RATES.conversionPercent),
     },
     fees: {
       commissionPercent: String(DEFAULT_FEES.commissionPercent),
@@ -72,6 +73,9 @@ function loadDraft(): Draft {
     if (!parsed?.methods?.length || !parsed.fees || !parsed.rates) {
       return defaultDraft();
     }
+    if (!parsed.rates.conversionPercent) {
+      parsed.rates.conversionPercent = String(DEFAULT_RATES.conversionPercent);
+    }
     return parsed;
   } catch {
     return defaultDraft();
@@ -84,11 +88,49 @@ export function PriceCalculatorApp() {
   const reduced = useReducedMotion() ?? false;
   const [draft, setDraft] = useState<Draft>(defaultDraft);
   const [ready, setReady] = useState(false);
+  const [rateNote, setRateNote] = useState("Se actualizează cursul…");
 
   useEffect(() => {
     setDraft(loadDraft());
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+
+    async function loadRates() {
+      try {
+        const response = await fetch("/api/price-calculator/rates");
+        const data = (await response.json()) as {
+          cnyPerUsd?: number;
+          eurPerUsd?: number;
+          date?: string;
+          error?: string;
+        };
+        if (!response.ok || !(data.cnyPerUsd > 0) || !(data.eurPerUsd > 0)) {
+          throw new Error(data.error || "failed");
+        }
+        if (cancelled) return;
+        setDraft((prev) => ({
+          ...prev,
+          rates: {
+            ...prev.rates,
+            cnyPerUsd: String(data.cnyPerUsd),
+            eurPerUsd: String(data.eurPerUsd),
+          },
+        }));
+        setRateNote(data.date ? `Curs din ${data.date}` : "Curs actualizat");
+      } catch {
+        if (!cancelled) setRateNote("Cursul nu s-a putut actualiza.");
+      }
+    }
+
+    void loadRates();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -98,8 +140,11 @@ export function PriceCalculatorApp() {
   const rates: Rates | null = useMemo(() => {
     const cnyPerUsd = num(draft.rates.cnyPerUsd);
     const eurPerUsd = num(draft.rates.eurPerUsd);
-    if (!(cnyPerUsd > 0) || !(eurPerUsd > 0)) return null;
-    return { cnyPerUsd, eurPerUsd };
+    const conversionPercent = num(draft.rates.conversionPercent);
+    if (!(cnyPerUsd > 0) || !(eurPerUsd > 0) || !Number.isFinite(conversionPercent)) {
+      return null;
+    }
+    return { cnyPerUsd, eurPerUsd, conversionPercent };
   }, [draft.rates]);
 
   const fees: FeeSettings | null = useMemo(() => {
@@ -342,6 +387,7 @@ export function PriceCalculatorApp() {
 
             <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 sm:p-6">
               <h2 className="text-sm font-medium text-slate-300">Cursuri</h2>
+              <p className="mt-1 text-xs text-slate-500">{rateNote}</p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Field
                   label="Câți yuani face un dolar"
@@ -352,11 +398,20 @@ export function PriceCalculatorApp() {
                   }
                 />
                 <Field
-                  label="Câți euro primești pe un dolar"
+                  label="Câți euro face un dolar"
                   suffix="EUR"
                   value={draft.rates.eurPerUsd}
                   onChange={(eurPerUsd) =>
                     patch({ rates: { ...draft.rates, eurPerUsd } })
+                  }
+                />
+                <Field
+                  label="Conversie"
+                  hint="se oprește la schimbul în euro"
+                  suffix="%"
+                  value={draft.rates.conversionPercent}
+                  onChange={(conversionPercent) =>
+                    patch({ rates: { ...draft.rates, conversionPercent } })
                   }
                 />
               </div>
@@ -386,6 +441,11 @@ export function PriceCalculatorApp() {
               )}
               {selectedOk && (
                 <dl className="mt-5 space-y-2 border-t border-slate-800 pt-4 text-sm">
+                  <Row label="Subtotal" value={money(selectedOk.subtotalEur, "EUR")} />
+                  <Row
+                    label="Conversie"
+                    value={`−${money(selectedOk.conversionEur, "EUR")}`}
+                  />
                   <Row label="Rămâi cu" value={money(selectedOk.profitEur, "EUR")} />
                   <Row label="Produs" value={money(selectedOk.productEur, "EUR")} />
                   <Row label="Livrare" value={money(selectedOk.shippingEur, "EUR")} />
