@@ -4,7 +4,7 @@ import { PriceCalculatorApp } from "@/components/price-calculator/PriceCalculato
 export const metadata: Metadata = {
   title: "Price Calculator",
   description:
-    "Set your profit, product cost, shipping, and commission. Get the dollar price to list and the euros you actually receive.",
+    "Enter your profit, product cost, shipping, and one commission. Get the dollar price and the euros you receive.",
   openGraph: {
     title: "Price Calculator | SPACE by cutitaru",
     description:

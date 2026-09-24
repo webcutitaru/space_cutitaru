@@ -13,7 +13,7 @@ import {
   type ShippingCurrency,
 } from "@/lib/price-calculator/quote";
 
-const STORAGE_KEY = "price-calculator-v1";
+const STORAGE_KEY = "price-calculator-v2";
 
 type ShippingMethod = {
   id: string;
@@ -26,20 +26,10 @@ type Draft = {
   profit: string;
   product: string;
   rates: { cnyPerUsd: string; eurPerUsd: string };
-  fees: Record<keyof FeeSettings, string>;
+  fees: { commissionPercent: string; fixedFeeUsd: string };
   methods: ShippingMethod[];
   selectedId: string;
 };
-
-const FEE_FIELDS: { key: keyof FeeSettings; label: string; step: string }[] = [
-  { key: "finalValueFeePercent", label: "Final value fee %", step: "0.01" },
-  { key: "internationalFeePercent", label: "International fee %", step: "0.01" },
-  { key: "perOrderFeeUsd", label: "Per order over $10", step: "0.01" },
-  { key: "perOrderFeeUnder10Usd", label: "Per order $10 or less", step: "0.01" },
-  { key: "vatOnFeesPercent", label: "VAT on fees %", step: "0.01" },
-  { key: "buyerTaxPercent", label: "Buyer tax %", step: "0.01" },
-  { key: "buyerPostageUsd", label: "Postage charged to buyer", step: "0.01" },
-];
 
 function money(amount: number, currency: "USD" | "EUR" | "CNY"): string {
   return new Intl.NumberFormat("en-US", {
@@ -58,20 +48,15 @@ function num(value: string): number {
 function defaultDraft(): Draft {
   const id = "ship-1";
   return {
-    profit: "5",
+    profit: "",
     product: "",
     rates: {
       cnyPerUsd: String(DEFAULT_RATES.cnyPerUsd),
       eurPerUsd: String(DEFAULT_RATES.eurPerUsd),
     },
     fees: {
-      finalValueFeePercent: String(DEFAULT_FEES.finalValueFeePercent),
-      internationalFeePercent: String(DEFAULT_FEES.internationalFeePercent),
-      perOrderFeeUsd: String(DEFAULT_FEES.perOrderFeeUsd),
-      perOrderFeeUnder10Usd: String(DEFAULT_FEES.perOrderFeeUnder10Usd),
-      vatOnFeesPercent: String(DEFAULT_FEES.vatOnFeesPercent),
-      buyerTaxPercent: String(DEFAULT_FEES.buyerTaxPercent),
-      buyerPostageUsd: String(DEFAULT_FEES.buyerPostageUsd),
+      commissionPercent: String(DEFAULT_FEES.commissionPercent),
+      fixedFeeUsd: String(DEFAULT_FEES.fixedFeeUsd),
     },
     methods: [{ id, name: "Standard", cost: "", currency: "USD" }],
     selectedId: id,
@@ -118,20 +103,19 @@ export function PriceCalculatorApp() {
   }, [draft.rates]);
 
   const fees: FeeSettings | null = useMemo(() => {
-    const next = {} as FeeSettings;
-    for (const field of FEE_FIELDS) {
-      const value = num(draft.fees[field.key]);
-      if (!Number.isFinite(value)) return null;
-      next[field.key] = value;
+    const commissionPercent = num(draft.fees.commissionPercent);
+    const fixedFeeUsd = num(draft.fees.fixedFeeUsd);
+    if (!Number.isFinite(commissionPercent) || !Number.isFinite(fixedFeeUsd)) {
+      return null;
     }
-    return next;
+    return { commissionPercent, fixedFeeUsd };
   }, [draft.fees]);
 
   const profit = num(draft.profit);
   const product = num(draft.product);
 
   function quoteFor(method: ShippingMethod): Quote | { error: string } | null {
-    if (!rates || !fees) return { error: "Check the rates and commission fields." };
+    if (!rates || !fees) return { error: "Verifică cursul și comisionul." };
     if (!Number.isFinite(profit) || !Number.isFinite(product)) return null;
     const cost = num(method.cost);
     if (!Number.isFinite(cost)) return null;
@@ -163,10 +147,7 @@ export function PriceCalculatorApp() {
     const id = `ship-${Date.now()}-${methodSeq}`;
     setDraft((prev) => ({
       ...prev,
-      methods: [
-        ...prev.methods,
-        { id, name: "Method", cost: "", currency: "USD" },
-      ],
+      methods: [...prev.methods, { id, name: "Altă metodă", cost: "", currency: "USD" }],
       selectedId: id,
     }));
   }
@@ -184,8 +165,7 @@ export function PriceCalculatorApp() {
     setDraft((prev) => {
       const methods = prev.methods.filter((method) => method.id !== id);
       if (methods.length === 0) return prev;
-      const selectedId =
-        prev.selectedId === id ? methods[0].id : prev.selectedId;
+      const selectedId = prev.selectedId === id ? methods[0].id : prev.selectedId;
       return { ...prev, methods, selectedId };
     });
   }
@@ -210,58 +190,47 @@ export function PriceCalculatorApp() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Price Calculator
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
-            Enter the profit you want in euros, the product cost in yuan, then
-            shipping and commission. The list price is in dollars. The payout
-            is what lands in euros.
+          <p className="mt-2 max-w-xl text-sm text-slate-400 sm:text-base">
+            Completezi costul și cât vrei să rămână la tine. Primești prețul în
+            dolari și câți euro îți intră.
           </p>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="space-y-6">
             <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5 backdrop-blur-md sm:p-6">
-              <h2 className="text-sm font-medium text-slate-200">Costs</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Profit you want"
+                  label="Cât vrei să rămână la tine"
+                  hint="profitul tău, în euro"
                   suffix="EUR"
                   value={draft.profit}
                   onChange={(profit) => patch({ profit })}
                 />
                 <Field
-                  label="Product cost"
+                  label="Cât te costă produsul"
+                  hint="prețul din China, în yuani"
                   suffix="CNY"
                   value={draft.product}
                   onChange={(product) => patch({ product })}
-                />
-                <Field
-                  label="Yuan per dollar"
-                  suffix="CNY"
-                  value={draft.rates.cnyPerUsd}
-                  onChange={(cnyPerUsd) =>
-                    patch({ rates: { ...draft.rates, cnyPerUsd } })
-                  }
-                />
-                <Field
-                  label="Euros received per dollar"
-                  suffix="EUR"
-                  value={draft.rates.eurPerUsd}
-                  onChange={(eurPerUsd) =>
-                    patch({ rates: { ...draft.rates, eurPerUsd } })
-                  }
                 />
               </div>
             </section>
 
             <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5 backdrop-blur-md sm:p-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium text-slate-200">Shipping</h2>
+                <div>
+                  <h2 className="text-sm font-medium text-slate-200">Livrare</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Cât te costă să trimiți produsul. Poți compara mai multe metode.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={addMethod}
-                  className="rounded-lg border border-indigo-400/30 px-3 py-1.5 text-xs text-indigo-100 transition hover:border-indigo-300/60"
+                  className="shrink-0 rounded-lg border border-indigo-400/30 px-3 py-1.5 text-xs text-indigo-100 transition hover:border-indigo-300/60"
                 >
-                  Add method
+                  Adaugă
                 </button>
               </div>
               <ul className="mt-4 space-y-3">
@@ -280,7 +249,7 @@ export function PriceCalculatorApp() {
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                         <label className="block flex-1 text-xs text-slate-400">
-                          Method
+                          Nume
                           <input
                             value={method.name}
                             onChange={(event) =>
@@ -297,12 +266,12 @@ export function PriceCalculatorApp() {
                             onChange={(event) =>
                               updateMethod(method.id, { cost: event.target.value })
                             }
-                            placeholder="0.00"
+                            placeholder="0"
                             className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/60"
                           />
                         </label>
                         <label className="block w-full text-xs text-slate-400 sm:w-28">
-                          Currency
+                          Monedă
                           <select
                             value={method.currency}
                             onChange={(event) =>
@@ -312,30 +281,32 @@ export function PriceCalculatorApp() {
                             }
                             className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/60"
                           >
-                            <option value="USD">USD</option>
-                            <option value="CNY">CNY</option>
+                            <option value="USD">Dolari</option>
+                            <option value="CNY">Yuani</option>
                           </select>
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => patch({ selectedId: method.id })}
-                          className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white transition hover:bg-indigo-400"
-                        >
-                          Use
-                        </button>
+                        {draft.methods.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => patch({ selectedId: method.id })}
+                            className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white transition hover:bg-indigo-400"
+                          >
+                            Alege
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => removeMethod(method.id)}
                           disabled={draft.methods.length === 1}
                           className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 transition hover:border-slate-500 disabled:opacity-40"
                         >
-                          Remove
+                          Șterge
                         </button>
                       </div>
-                      <p className="mt-2 font-mono text-xs text-indigo-200/90">
+                      <p className="mt-2 text-xs text-indigo-200/90">
                         {ok
-                          ? `List ${money(ok.sellPriceUsd, "USD")} · receive ${money(ok.payoutEur, "EUR")}`
-                          : "Enter a cost to see this method’s price."}
+                          ? `Cu livrarea asta vinzi cu ${money(ok.sellPriceUsd, "USD")}.`
+                          : "Pune costul livrării."}
                       </p>
                     </li>
                   );
@@ -344,24 +315,50 @@ export function PriceCalculatorApp() {
             </section>
 
             <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5 backdrop-blur-md sm:p-6">
-              <h2 className="text-sm font-medium text-slate-200">Commission</h2>
+              <h2 className="text-sm font-medium text-slate-200">Comision</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Defaults match a normal sale: 13.6% plus 1.65% international,
-                $0.40 per order over $10, and 19% VAT on those fees. Buyer tax
-                increases the fee and is not paid to you.
+                Cât se oprește din vânzare. Valoarea de aici include deja taxa
+                internațională și TVA-ul pe comision.
               </p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {FEE_FIELDS.map((field) => (
-                  <Field
-                    key={field.key}
-                    label={field.label}
-                    suffix={field.key.endsWith("Usd") ? "USD" : "%"}
-                    value={draft.fees[field.key]}
-                    onChange={(value) =>
-                      patch({ fees: { ...draft.fees, [field.key]: value } })
-                    }
-                  />
-                ))}
+                <Field
+                  label="Procent din preț"
+                  suffix="%"
+                  value={draft.fees.commissionPercent}
+                  onChange={(commissionPercent) =>
+                    patch({ fees: { ...draft.fees, commissionPercent } })
+                  }
+                />
+                <Field
+                  label="Sumă fixă pe comandă"
+                  suffix="USD"
+                  value={draft.fees.fixedFeeUsd}
+                  onChange={(fixedFeeUsd) =>
+                    patch({ fees: { ...draft.fees, fixedFeeUsd } })
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 sm:p-6">
+              <h2 className="text-sm font-medium text-slate-300">Cursuri</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Câți yuani face un dolar"
+                  suffix="CNY"
+                  value={draft.rates.cnyPerUsd}
+                  onChange={(cnyPerUsd) =>
+                    patch({ rates: { ...draft.rates, cnyPerUsd } })
+                  }
+                />
+                <Field
+                  label="Câți euro primești pe un dolar"
+                  suffix="EUR"
+                  value={draft.rates.eurPerUsd}
+                  onChange={(eurPerUsd) =>
+                    patch({ rates: { ...draft.rates, eurPerUsd } })
+                  }
+                />
               </div>
             </section>
           </div>
@@ -369,33 +366,30 @@ export function PriceCalculatorApp() {
           <aside className="lg:sticky lg:top-6 lg:self-start">
             <section className="rounded-2xl border border-indigo-400/30 bg-slate-950/80 p-5 backdrop-blur-md">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300/80">
-                {selected?.name || "Price"}
+                {selected?.name || "Preț"}
               </p>
-              <h2 className="mt-3 text-sm text-slate-400">List at</h2>
+              <h2 className="mt-3 text-sm text-slate-400">Pune prețul</h2>
               <p className="mt-1 text-4xl font-semibold tracking-tight text-white">
                 {selectedOk ? money(selectedOk.sellPriceUsd, "USD") : "—"}
               </p>
-              <h3 className="mt-5 text-sm text-slate-400">You receive</h3>
+              <h3 className="mt-5 text-sm text-slate-400">Îți intră</h3>
               <p className="mt-1 text-2xl font-semibold text-indigo-100">
                 {selectedOk ? money(selectedOk.payoutEur, "EUR") : "—"}
               </p>
               {selectedError && (
                 <p className="mt-4 text-sm text-rose-300">{selectedError}</p>
               )}
+              {!selectedOk && !selectedError && (
+                <p className="mt-4 text-sm text-slate-500">
+                  Completează profitul, produsul și livrarea.
+                </p>
+              )}
               {selectedOk && (
                 <dl className="mt-5 space-y-2 border-t border-slate-800 pt-4 text-sm">
-                  <Row label="Profit" value={money(selectedOk.profitEur, "EUR")} />
-                  <Row label="Product" value={money(selectedOk.productEur, "EUR")} />
-                  <Row label="Shipping" value={money(selectedOk.shippingEur, "EUR")} />
-                  <Row label="Fees" value={money(selectedOk.feeEur, "EUR")} />
-                  <Row
-                    label="Fees in dollars"
-                    value={money(selectedOk.feeUsd, "USD")}
-                  />
-                  <Row
-                    label="Buyer tax kept aside"
-                    value={money(selectedOk.buyerTaxUsd, "USD")}
-                  />
+                  <Row label="Rămâi cu" value={money(selectedOk.profitEur, "EUR")} />
+                  <Row label="Produs" value={money(selectedOk.productEur, "EUR")} />
+                  <Row label="Livrare" value={money(selectedOk.shippingEur, "EUR")} />
+                  <Row label="Comision" value={money(selectedOk.feeEur, "EUR")} />
                 </dl>
               )}
             </section>
@@ -408,24 +402,27 @@ export function PriceCalculatorApp() {
 
 function Field({
   label,
+  hint,
   suffix,
   value,
   onChange,
 }: {
   label: string;
+  hint?: string;
   suffix: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-xs text-slate-400">
+    <label className="block text-sm text-slate-300">
       {label}
-      <span className="mt-1 flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900/80 focus-within:border-indigo-400/60">
+      {hint && <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>}
+      <span className="mt-2 flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900/80 focus-within:border-indigo-400/60">
         <input
           inputMode="decimal"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full bg-transparent px-3 py-2 text-sm text-white outline-none"
+          className="w-full bg-transparent px-3 py-2.5 text-sm text-white outline-none"
         />
         <span className="flex items-center border-l border-slate-700 px-3 font-mono text-[10px] tracking-wide text-slate-500">
           {suffix}
