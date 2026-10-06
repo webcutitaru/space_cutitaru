@@ -458,13 +458,12 @@ export function PriceCalculatorApp() {
 
         <aside className="rounded-2xl border border-indigo-400/30 bg-slate-950/80 p-5 lg:sticky lg:top-8">
           <p className="text-sm text-slate-400">{selected?.name || "Preț"}</p>
-          <h2 className="mt-3 text-sm text-slate-400">Pune prețul</h2>
+          <h2 className="mt-3 flex items-center text-sm text-slate-400">
+            Pune prețul
+            <Info text="Prețul în dolari cu care listezi produsul, ca să rămâi cu suma pe care ai cerut-o." />
+          </h2>
           <p className="mt-1 text-5xl font-semibold tracking-tight text-indigo-200 tabular-nums">
             {selectedOk ? money(selectedOk.sellPriceUsd, "USD") : "—"}
-          </p>
-          <h3 className="mt-6 text-sm text-slate-400">Îți intră</h3>
-          <p className="mt-1 text-xl text-slate-100 tabular-nums">
-            {selectedOk ? money(selectedOk.payoutEur, "EUR") : "—"}
           </p>
           {selectedError && <p className="mt-4 text-sm text-rose-300">{selectedError}</p>}
           {!selectedOk && !selectedError && (
@@ -475,19 +474,64 @@ export function PriceCalculatorApp() {
           {selectedOk && (
             <div className="mt-6 border-t border-slate-800 pt-4 text-sm">
               <dl className="space-y-2">
-                <Row label="Subtotal" value={money(selectedOk.subtotalEur, "EUR")} />
-                <Row label="Conversie" value={minus(selectedOk.conversionEur)} />
-                <Row label="Platformă" value={minus(selectedOk.platformEur)} />
-                <Row label="Reclamă" value={minus(selectedOk.adEur)} />
+                <Row
+                  label="Vânzarea în euro"
+                  hint="Prețul de vânzare schimbat în euro, înainte de orice tăiere."
+                  value={money(selectedOk.subtotalEur, "EUR")}
+                />
+                <Row
+                  label="Schimbul în euro"
+                  hint="Procentul oprit când dolarii sunt schimbați în euro."
+                  value={minus(selectedOk.conversionEur)}
+                />
+                <Row
+                  label="Platforma"
+                  hint="Procentul pe care îl oprește platforma din prețul de vânzare."
+                  value={minus(selectedOk.platformEur)}
+                />
+                <Row
+                  label="Reclama"
+                  hint="Costul reclamei pentru această vânzare."
+                  value={minus(selectedOk.adEur)}
+                />
                 {draft.adMode === "percent" && (
-                  <Row label="TVA pe reclamă" value={minus(selectedOk.adVatEur)} />
+                  <Row
+                    label="TVA pe reclamă"
+                    hint="Taxa adăugată peste costul reclamei."
+                    value={minus(selectedOk.adVatEur)}
+                  />
                 )}
-                <Row label="Agent" value={minus(selectedOk.agentEur)} />
-                <Row label="Produs" value={minus(selectedOk.productEur)} />
-                <Row label="Livrare" value={minus(selectedOk.shippingEur)} />
               </dl>
               <dl className="mt-3 space-y-2 border-t border-slate-700 pt-3">
-                <Row label="Rămâi cu" value={money(selectedOk.profitEur, "EUR")} />
+                <Row
+                  label="Îți intră în cont"
+                  hint="Euro care ajung în cont din vânzare, după platformă, reclamă și schimb. Produsul, agentul și livrarea nu sunt scăzute aici."
+                  value={money(selectedOk.payoutEur, "EUR")}
+                />
+              </dl>
+              <dl className="mt-4 space-y-2">
+                <Row
+                  label="Produsul"
+                  hint="Cât te costă produsul, schimbat în euro."
+                  value={minus(selectedOk.productEur)}
+                />
+                <Row
+                  label="Agentul"
+                  hint="Procentul agentului, calculat din prețul produsului."
+                  value={minus(selectedOk.agentEur)}
+                />
+                <Row
+                  label="Livrarea"
+                  hint="Cât te costă metoda de livrare aleasă, schimbată în euro."
+                  value={minus(selectedOk.shippingEur)}
+                />
+              </dl>
+              <dl className="mt-3 space-y-2 border-t border-slate-700 pt-3">
+                <Row
+                  label="Rămâi cu"
+                  hint="Ce rămâne după ce din banii intrați scazi produsul, agentul și livrarea."
+                  value={money(selectedOk.profitEur, "EUR")}
+                />
               </dl>
             </div>
           )}
@@ -624,11 +668,34 @@ function ModeButton({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-slate-500">{label}</dt>
+      <dt className="flex items-center text-slate-500">
+        {label}
+        <Info text={hint} />
+      </dt>
       <dd className="text-slate-200 tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+function Info({ text }: { text: string }) {
+  return (
+    <span className="group relative ml-1.5 inline-flex">
+      <button
+        type="button"
+        aria-label={text}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-600 text-[10px] leading-none text-slate-400 hover:border-slate-400 hover:text-slate-200"
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 hidden w-52 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left text-xs leading-5 text-slate-200 shadow-lg group-hover:block group-focus-within:block"
+      >
+        {text}
+      </span>
+    </span>
   );
 }
