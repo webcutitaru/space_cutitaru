@@ -258,10 +258,11 @@ export function PriceCalculatorApp() {
             prețul în dolari și câți euro îți intră.
           </p>
 
-          <ol className="mt-10">
+          <ol className="mt-10 space-y-4">
             <Step n={1} title="Prețul produsului">
-              <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-3">
+              <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                 <Field
+                  label="Sumă"
                   suffix={draft.productCurrency}
                   value={draft.product}
                   onChange={(product) => patch({ product })}
@@ -275,6 +276,7 @@ export function PriceCalculatorApp() {
 
             <Step n={2} title="Agent" note="Procent pentru procesarea comenzii.">
               <Field
+                label="Procent"
                 suffix="%"
                 value={draft.agentPercent}
                 onChange={(agentPercent) => patch({ agentPercent })}
@@ -303,40 +305,35 @@ export function PriceCalculatorApp() {
                   return (
                     <li
                       key={method.id}
-                      className={`border-l-2 pl-3 ${active ? "border-indigo-400" : "border-slate-800"}`}
+                      className={`rounded-xl border p-3 ${
+                        active
+                          ? "border-indigo-400/60 bg-indigo-500/10"
+                          : "border-slate-800"
+                      }`}
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                        <label className="block flex-1 text-sm text-slate-400">
-                          Nume
-                          <input
-                            value={method.name}
-                            onChange={(event) =>
-                              updateMethod(method.id, { name: event.target.value })
-                            }
-                            className="mt-1 w-full border-b border-slate-700 bg-transparent py-2 text-sm text-white outline-none focus:border-slate-300"
-                          />
-                        </label>
-                        <label className="block w-full text-sm text-slate-400 sm:w-32">
-                          Cost
-                          <input
-                            inputMode="decimal"
-                            value={method.cost}
-                            onChange={(event) =>
-                              updateMethod(method.id, { cost: event.target.value })
-                            }
-                            placeholder="0"
-                            className="mt-1 w-full border-b border-slate-700 bg-transparent py-2 text-sm text-white outline-none focus:border-slate-300"
-                          />
-                        </label>
+                      <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1.4fr)_8rem_9rem]">
+                        <TextField
+                          label="Nume"
+                          value={method.name}
+                          onChange={(name) => updateMethod(method.id, { name })}
+                        />
+                        <Field
+                          label="Cost"
+                          suffix={method.currency}
+                          value={method.cost}
+                          onChange={(cost) => updateMethod(method.id, { cost })}
+                        />
                         <CurrencySelect
                           value={method.currency}
                           onChange={(currency) => updateMethod(method.id, { currency })}
                         />
+                      </div>
+                      <div className="mt-3 flex gap-4">
                         {draft.methods.length > 1 && (
                           <button
                             type="button"
                             onClick={() => patch({ selectedId: method.id })}
-                            className={`py-2 text-sm ${active ? "text-indigo-300" : "text-slate-400 hover:text-white"}`}
+                            className={`text-sm ${active ? "text-indigo-300" : "text-slate-400 hover:text-white"}`}
                           >
                             {active ? "Aleasă" : "Alege"}
                           </button>
@@ -345,7 +342,7 @@ export function PriceCalculatorApp() {
                           type="button"
                           onClick={() => removeMethod(method.id)}
                           disabled={draft.methods.length === 1}
-                          className="py-2 text-sm text-slate-500 hover:text-slate-300 disabled:opacity-40"
+                          className="text-sm text-slate-500 hover:text-slate-300 disabled:opacity-40"
                         >
                           Șterge
                         </button>
@@ -363,6 +360,7 @@ export function PriceCalculatorApp() {
 
             <Step n={4} title="Platformă" note="Procent oprit din prețul de vânzare.">
               <Field
+                label="Procent"
                 suffix="%"
                 value={draft.platformPercent}
                 onChange={(platformPercent) => patch({ platformPercent })}
@@ -385,7 +383,7 @@ export function PriceCalculatorApp() {
                 </ModeButton>
               </div>
               {draft.adMode === "percent" ? (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid items-end gap-4 sm:grid-cols-2">
                   <Field
                     label="Procent"
                     hint="din prețul de vânzare"
@@ -401,7 +399,7 @@ export function PriceCalculatorApp() {
                   />
                 </div>
               ) : (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid items-end gap-4 sm:grid-cols-2">
                   <Field
                     label="Sumă pe zi"
                     suffix="USD"
@@ -421,6 +419,7 @@ export function PriceCalculatorApp() {
 
             <Step n={6} title="Cât vrei să rămână la tine" note="După toate costurile, în euro.">
               <Field
+                label="Sumă"
                 suffix="EUR"
                 value={draft.profit}
                 onChange={(profit) => patch({ profit })}
@@ -428,10 +427,10 @@ export function PriceCalculatorApp() {
             </Step>
           </ol>
 
-          <section className="mt-10 border-t border-slate-800 pt-6">
+          <section className="mt-4 rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5">
             <h2 className="text-base text-slate-300">Cursuri</h2>
             <p className="mt-1 text-sm text-slate-500">{rateNote}</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid items-end gap-4 sm:grid-cols-2">
               <Field
                 label="Câți yuani face un dolar"
                 suffix="CNY"
@@ -457,7 +456,7 @@ export function PriceCalculatorApp() {
           </section>
         </div>
 
-        <aside className="lg:sticky lg:top-8">
+        <aside className="rounded-2xl border border-indigo-400/30 bg-slate-950/80 p-5 lg:sticky lg:top-8">
           <p className="text-sm text-slate-400">{selected?.name || "Preț"}</p>
           <h2 className="mt-3 text-sm text-slate-400">Pune prețul</h2>
           <p className="mt-1 text-5xl font-semibold tracking-tight text-indigo-200 tabular-nums">
@@ -512,7 +511,7 @@ function Step({
   children: ReactNode;
 }) {
   return (
-    <li className="border-t border-slate-800 py-6 first:border-t-0">
+    <li className="rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5">
       <div className="mb-3 flex items-baseline justify-between gap-4">
         <h2 className="text-base text-slate-100">
           <span className="mr-2 text-slate-500">{n}.</span>
@@ -540,18 +539,41 @@ function Field({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-sm text-slate-300">
-      {label}
-      {hint && <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>}
-      <span className="mt-2 flex border-b border-slate-700 focus-within:border-slate-300">
+    <label className="block min-w-0">
+      <span className="mb-1.5 block h-5 truncate text-xs leading-5 text-slate-400">
+        {label ?? "\u00a0"}
+        {hint ? <span className="text-slate-500"> · {hint}</span> : null}
+      </span>
+      <span className="flex h-11 items-center rounded-lg border border-slate-700 bg-slate-900/80 px-3 focus-within:border-indigo-400/60">
         <input
           inputMode="decimal"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full bg-transparent py-2 text-sm text-white outline-none"
+          className="h-full w-full bg-transparent text-sm text-white outline-none"
         />
-        <span className="flex items-center pl-3 text-xs text-slate-500">{suffix}</span>
+        <span className="shrink-0 pl-3 text-xs leading-none text-slate-500">{suffix}</span>
       </span>
+    </label>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block h-5 text-xs leading-5 text-slate-400">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 text-sm text-white outline-none focus:border-indigo-400/60"
+      />
     </label>
   );
 }
@@ -564,12 +586,12 @@ function CurrencySelect({
   onChange: (value: MoneyCurrency) => void;
 }) {
   return (
-    <label className="block text-sm text-slate-400">
-      Monedă
+    <label className="block min-w-0">
+      <span className="mb-1.5 block h-5 text-xs leading-5 text-slate-400">Monedă</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as MoneyCurrency)}
-        className="mt-1 w-full border-b border-slate-700 bg-transparent py-2 text-sm text-white outline-none focus:border-slate-300"
+        className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 text-sm text-white outline-none focus:border-indigo-400/60"
       >
         <option value="USD">Dolari</option>
         <option value="CNY">Yuani</option>
