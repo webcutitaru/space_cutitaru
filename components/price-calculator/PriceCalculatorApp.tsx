@@ -4,29 +4,37 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  DEFAULT_FEES,
+  DEFAULT_AD_VAT_PERCENT,
+  DEFAULT_PLATFORM_PERCENT,
   DEFAULT_RATES,
   quoteSellPrice,
-  type FeeSettings,
+  type AdMode,
+  type MoneyCurrency,
   type Quote,
   type Rates,
-  type ShippingCurrency,
 } from "@/lib/price-calculator/quote";
 
-const STORAGE_KEY = "price-calculator-v3";
+const STORAGE_KEY = "price-calculator-v4";
 
 type ShippingMethod = {
   id: string;
   name: string;
   cost: string;
-  currency: ShippingCurrency;
+  currency: MoneyCurrency;
 };
 
 type Draft = {
   profit: string;
   product: string;
+  productCurrency: MoneyCurrency;
+  agentPercent: string;
+  platformPercent: string;
+  adMode: AdMode;
+  adPercent: string;
+  adVatPercent: string;
+  dailyAdUsd: string;
+  salesPerDay: string;
   rates: { cnyPerUsd: string; eurPerUsd: string; conversionPercent: string };
-  fees: { commissionPercent: string; fixedFeeUsd: string };
   methods: ShippingMethod[];
   selectedId: string;
 };
@@ -54,14 +62,18 @@ function defaultDraft(): Draft {
   return {
     profit: "",
     product: "",
+    productCurrency: "CNY",
+    agentPercent: "0",
+    platformPercent: String(DEFAULT_PLATFORM_PERCENT),
+    adMode: "percent",
+    adPercent: "0",
+    adVatPercent: String(DEFAULT_AD_VAT_PERCENT),
+    dailyAdUsd: "",
+    salesPerDay: "",
     rates: {
       cnyPerUsd: String(DEFAULT_RATES.cnyPerUsd),
       eurPerUsd: String(DEFAULT_RATES.eurPerUsd),
       conversionPercent: String(DEFAULT_RATES.conversionPercent),
-    },
-    fees: {
-      commissionPercent: String(DEFAULT_FEES.commissionPercent),
-      fixedFeeUsd: String(DEFAULT_FEES.fixedFeeUsd),
     },
     methods: [{ id, name: "Standard", cost: "", currency: "USD" }],
     selectedId: id,
@@ -74,13 +86,8 @@ function loadDraft(): Draft {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultDraft();
     const parsed = JSON.parse(raw) as Draft;
-    if (!parsed?.methods?.length || !parsed.fees || !parsed.rates) {
-      return defaultDraft();
-    }
-    if (!parsed.rates.conversionPercent) {
-      parsed.rates.conversionPercent = String(DEFAULT_RATES.conversionPercent);
-    }
-    return parsed;
+    if (!parsed?.methods?.length || !parsed.rates) return defaultDraft();
+    return { ...defaultDraft(), ...parsed, rates: { ...defaultDraft().rates, ...parsed.rates } };
   } catch {
     return defaultDraft();
   }
@@ -114,7 +121,13 @@ export function PriceCalculatorApp() {
         };
         const cnyPerUsd = data.cnyPerUsd;
         const eurPerUsd = data.eurPerUsd;
-        if (!response.ok || cnyPerUsd == null || eurPerUsd == null || cnyPerUsd <= 0 || eurPerUsd <= 0) {
+        if (
+          !response.ok ||
+          cnyPerUsd == null ||
+          eurPerUsd == null ||
+          cnyPerUsd <= 0 ||
+          eurPerUsd <= 0
+        ) {
           throw new Error(data.error || "failed");
         }
         if (cancelled) return;
@@ -153,41 +166,51 @@ export function PriceCalculatorApp() {
     return { cnyPerUsd, eurPerUsd, conversionPercent };
   }, [draft.rates]);
 
-  const fees: FeeSettings | null = useMemo(() => {
-    const commissionPercent = num(draft.fees.commissionPercent);
-    const fixedFeeUsd = num(draft.fees.fixedFeeUsd);
-    if (!Number.isFinite(commissionPercent) || !Number.isFinite(fixedFeeUsd)) {
-      return null;
-    }
-    return { commissionPercent, fixedFeeUsd };
-  }, [draft.fees]);
-
   const profit = num(draft.profit);
   const product = num(draft.product);
+  const agentPercent = num(draft.agentPercent);
+  const platformPercent = num(draft.platformPercent);
+  const adPercent = num(draft.adPercent);
+  const adVatPercent = num(draft.adVatPercent);
+  const dailyAdUsd = num(draft.dailyAdUsd);
+  const salesPerDay = num(draft.salesPerDay);
 
   function quoteFor(method: ShippingMethod): Quote | { error: string } | null {
-    if (!rates || !fees) return { error: "Verifică cursul și comisionul." };
+    if (!rates) return { error: "Verifică cursul." };
     if (!Number.isFinite(profit) || !Number.isFinite(product)) return null;
+    if (!Number.isFinite(agentPercent) || !Number.isFinite(platformPercent)) {
+      return { error: "Verifică procentele." };
+    }
     const cost = num(method.cost);
     if (!Number.isFinite(cost)) return null;
+    if (draft.adMode === "percent" && (!Number.isFinite(adPercent) || !Number.isFinite(adVatPercent))) {
+      return null;
+    }
+    if (draft.adMode === "daily" && (!Number.isFinite(dailyAdUsd) || !Number.isFinite(salesPerDay))) {
+      return null;
+    }
     return quoteSellPrice({
       desiredProfitEur: profit,
-      productCostCny: product,
+      productCost: product,
+      productCurrency: draft.productCurrency,
+      agentPercent,
       shippingCost: cost,
       shippingCurrency: method.currency,
+      platformPercent,
+      adMode: draft.adMode,
+      adPercent: Number.isFinite(adPercent) ? adPercent : 0,
+      adVatPercent: Number.isFinite(adVatPercent) ? adVatPercent : 0,
+      dailyAdUsd: Number.isFinite(dailyAdUsd) ? dailyAdUsd : 0,
+      salesPerDay: Number.isFinite(salesPerDay) ? salesPerDay : 0,
       rates,
-      fees,
     });
   }
 
   const selected =
-    draft.methods.find((method) => method.id === draft.selectedId) ??
-    draft.methods[0];
+    draft.methods.find((method) => method.id === draft.selectedId) ?? draft.methods[0];
   const selectedQuote = selected ? quoteFor(selected) : null;
-  const selectedOk =
-    selectedQuote && !("error" in selectedQuote) ? selectedQuote : null;
-  const selectedError =
-    selectedQuote && "error" in selectedQuote ? selectedQuote.error : null;
+  const selectedOk = selectedQuote && !("error" in selectedQuote) ? selectedQuote : null;
+  const selectedError = selectedQuote && "error" in selectedQuote ? selectedQuote.error : null;
 
   function patch(partial: Partial<Draft>) {
     setDraft((prev) => ({ ...prev, ...partial }));
@@ -242,8 +265,8 @@ export function PriceCalculatorApp() {
             Price Calculator
           </h1>
           <p className="mt-2 max-w-xl text-sm text-slate-400 sm:text-base">
-            Completezi costul și cât vrei să rămână la tine. Primești prețul în
-            dolari și câți euro îți intră.
+            Completezi costul, livrarea și cât vrei să rămână la tine. Primești
+            prețul în dolari și câți euro îți intră.
           </p>
         </header>
 
@@ -253,17 +276,37 @@ export function PriceCalculatorApp() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label="Cât vrei să rămână la tine"
-                  hint="profitul tău, în euro"
+                  hint="după toate costurile, în euro"
                   suffix="EUR"
                   value={draft.profit}
                   onChange={(profit) => patch({ profit })}
                 />
+                <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+                  <Field
+                    label="Prețul produsului"
+                    suffix={draft.productCurrency}
+                    value={draft.product}
+                    onChange={(product) => patch({ product })}
+                  />
+                  <CurrencySelect
+                    label="Monedă"
+                    value={draft.productCurrency}
+                    onChange={(productCurrency) => patch({ productCurrency })}
+                  />
+                </div>
                 <Field
-                  label="Cât te costă produsul"
-                  hint="prețul din China, în yuani"
-                  suffix="CNY"
-                  value={draft.product}
-                  onChange={(product) => patch({ product })}
+                  label="Agent"
+                  hint="procent pentru procesarea comenzii"
+                  suffix="%"
+                  value={draft.agentPercent}
+                  onChange={(agentPercent) => patch({ agentPercent })}
+                />
+                <Field
+                  label="Platformă"
+                  hint="procent oprit din prețul de vânzare"
+                  suffix="%"
+                  value={draft.platformPercent}
+                  onChange={(platformPercent) => patch({ platformPercent })}
                 />
               </div>
             </section>
@@ -321,21 +364,11 @@ export function PriceCalculatorApp() {
                             className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/60"
                           />
                         </label>
-                        <label className="block w-full text-xs text-slate-400 sm:w-28">
-                          Monedă
-                          <select
-                            value={method.currency}
-                            onChange={(event) =>
-                              updateMethod(method.id, {
-                                currency: event.target.value as ShippingCurrency,
-                              })
-                            }
-                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/60"
-                          >
-                            <option value="USD">Dolari</option>
-                            <option value="CNY">Yuani</option>
-                          </select>
-                        </label>
+                        <CurrencySelect
+                          label="Monedă"
+                          value={method.currency}
+                          onChange={(currency) => updateMethod(method.id, { currency })}
+                        />
                         {draft.methods.length > 1 && (
                           <button
                             type="button"
@@ -366,29 +399,54 @@ export function PriceCalculatorApp() {
             </section>
 
             <section className="rounded-2xl border border-indigo-400/20 bg-slate-950/70 p-5 backdrop-blur-md sm:p-6">
-              <h2 className="text-sm font-medium text-slate-200">Comision</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Cât se oprește din vânzare. Valoarea de aici include deja taxa
-                internațională și TVA-ul pe comision.
-              </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Field
-                  label="Procent din preț"
-                  suffix="%"
-                  value={draft.fees.commissionPercent}
-                  onChange={(commissionPercent) =>
-                    patch({ fees: { ...draft.fees, commissionPercent } })
-                  }
-                />
-                <Field
-                  label="Sumă fixă pe comandă"
-                  suffix="USD"
-                  value={draft.fees.fixedFeeUsd}
-                  onChange={(fixedFeeUsd) =>
-                    patch({ fees: { ...draft.fees, fixedFeeUsd } })
-                  }
-                />
+              <h2 className="text-sm font-medium text-slate-200">Reclamă</h2>
+              <div className="mt-3 flex gap-2">
+                <ModeButton
+                  active={draft.adMode === "percent"}
+                  onClick={() => patch({ adMode: "percent" })}
+                >
+                  Procent din vânzare
+                </ModeButton>
+                <ModeButton
+                  active={draft.adMode === "daily"}
+                  onClick={() => patch({ adMode: "daily" })}
+                >
+                  Sumă pe zi
+                </ModeButton>
               </div>
+              {draft.adMode === "percent" ? (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Procent"
+                    hint="din prețul de vânzare"
+                    suffix="%"
+                    value={draft.adPercent}
+                    onChange={(adPercent) => patch({ adPercent })}
+                  />
+                  <Field
+                    label="TVA pe reclamă"
+                    suffix="%"
+                    value={draft.adVatPercent}
+                    onChange={(adVatPercent) => patch({ adVatPercent })}
+                  />
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Sumă pe zi"
+                    suffix="USD"
+                    value={draft.dailyAdUsd}
+                    onChange={(dailyAdUsd) => patch({ dailyAdUsd })}
+                  />
+                  <Field
+                    label="Vânzări pe zi"
+                    hint="suma se împarte la ele"
+                    suffix="buc"
+                    value={draft.salesPerDay}
+                    onChange={(salesPerDay) => patch({ salesPerDay })}
+                  />
+                </div>
+              )}
             </section>
 
             <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 sm:p-6">
@@ -437,9 +495,7 @@ export function PriceCalculatorApp() {
               <p className="mt-1 text-2xl font-semibold text-indigo-100">
                 {selectedOk ? money(selectedOk.payoutEur, "EUR") : "—"}
               </p>
-              {selectedError && (
-                <p className="mt-4 text-sm text-rose-300">{selectedError}</p>
-              )}
+              {selectedError && <p className="mt-4 text-sm text-rose-300">{selectedError}</p>}
               {!selectedOk && !selectedError && (
                 <p className="mt-4 text-sm text-slate-500">
                   Completează profitul, produsul și livrarea.
@@ -450,7 +506,12 @@ export function PriceCalculatorApp() {
                   <dl className="space-y-2">
                     <Row label="Subtotal" value={money(selectedOk.subtotalEur, "EUR")} />
                     <Row label="Conversie" value={minus(selectedOk.conversionEur)} />
-                    <Row label="Comision" value={minus(selectedOk.feeEur)} />
+                    <Row label="Platformă" value={minus(selectedOk.platformEur)} />
+                    <Row label="Reclamă" value={minus(selectedOk.adEur)} />
+                    {draft.adMode === "percent" && (
+                      <Row label="TVA pe reclamă" value={minus(selectedOk.adVatEur)} />
+                    )}
+                    <Row label="Agent" value={minus(selectedOk.agentEur)} />
                     <Row label="Produs" value={minus(selectedOk.productEur)} />
                     <Row label="Livrare" value={minus(selectedOk.shippingEur)} />
                   </dl>
@@ -496,6 +557,54 @@ function Field({
         </span>
       </span>
     </label>
+  );
+}
+
+function CurrencySelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: MoneyCurrency;
+  onChange: (value: MoneyCurrency) => void;
+}) {
+  return (
+    <label className="block text-xs text-slate-400">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as MoneyCurrency)}
+        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm text-white outline-none focus:border-indigo-400/60"
+      >
+        <option value="USD">Dolari</option>
+        <option value="CNY">Yuani</option>
+      </select>
+    </label>
+  );
+}
+
+function ModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-2 text-xs ${
+        active
+          ? "bg-indigo-500 text-white"
+          : "border border-slate-700 text-slate-300 hover:border-slate-500"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

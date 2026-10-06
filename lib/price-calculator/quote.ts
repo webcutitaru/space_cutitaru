@@ -1,11 +1,5 @@
-export type ShippingCurrency = "CNY" | "USD";
-
-export type FeeSettings = {
-  /** Percent kept from the dollar list price. */
-  commissionPercent: number;
-  /** Extra dollars taken on every order. */
-  fixedFeeUsd: number;
-};
+export type MoneyCurrency = "CNY" | "USD";
+export type AdMode = "percent" | "daily";
 
 export type Rates = {
   /** How many CNY equal 1 USD. */
@@ -18,34 +12,35 @@ export type Rates = {
 
 export type QuoteInput = {
   desiredProfitEur: number;
-  productCostCny: number;
+  productCost: number;
+  productCurrency: MoneyCurrency;
+  agentPercent: number;
   shippingCost: number;
-  shippingCurrency: ShippingCurrency;
+  shippingCurrency: MoneyCurrency;
+  platformPercent: number;
+  adMode: AdMode;
+  adPercent: number;
+  adVatPercent: number;
+  dailyAdUsd: number;
+  salesPerDay: number;
   rates: Rates;
-  fees: FeeSettings;
 };
 
 export type Quote = {
   sellPriceUsd: number;
   payoutEur: number;
   profitEur: number;
-  productUsd: number;
-  productEur: number;
-  shippingUsd: number;
-  shippingEur: number;
-  feeUsd: number;
-  feeEur: number;
   subtotalEur: number;
   conversionEur: number;
+  platformEur: number;
+  adEur: number;
+  adVatEur: number;
+  agentEur: number;
+  productEur: number;
+  shippingEur: number;
 };
 
 export type QuoteResult = Quote | { error: string };
-
-/** 13.6% + 1.65%, then 19% VAT on that fee → 18.15% of the price. */
-export const DEFAULT_FEES: FeeSettings = {
-  commissionPercent: 18.15,
-  fixedFeeUsd: 0.48,
-};
 
 export const DEFAULT_RATES: Rates = {
   cnyPerUsd: 7.2,
@@ -53,13 +48,19 @@ export const DEFAULT_RATES: Rates = {
   conversionPercent: 3,
 };
 
+export const DEFAULT_PLATFORM_PERCENT = 18.15;
+export const DEFAULT_AD_VAT_PERCENT = 19;
+
+function toUsd(amount: number, currency: MoneyCurrency, cnyPerUsd: number): number {
+  return currency === "CNY" ? amount / cnyPerUsd : amount;
+}
+
 /**
- * Smallest USD list price whose euro payout covers product, shipping, and
- * the desired profit. Commission is one percent of the list price plus a
- * fixed amount per order.
+ * Smallest USD price whose euro payout still leaves the desired profit
+ * after the agent, shipping, platform percent, ads, and conversion.
  */
 export function quoteSellPrice(input: QuoteInput): QuoteResult {
-  const { rates, fees } = input;
+  const { rates } = input;
 
   if (!(rates.cnyPerUsd > 0) || !(rates.eurPerUsd > 0)) {
     return { error: "Cursul trebuie să fie mai mare decât zero." };
@@ -69,52 +70,69 @@ export function quoteSellPrice(input: QuoteInput): QuoteResult {
   }
   if (
     input.desiredProfitEur < 0 ||
-    input.productCostCny < 0 ||
+    input.productCost < 0 ||
     input.shippingCost < 0 ||
-    fees.commissionPercent < 0 ||
-    fees.fixedFeeUsd < 0
+    input.agentPercent < 0 ||
+    input.platformPercent < 0 ||
+    input.adPercent < 0 ||
+    input.adVatPercent < 0 ||
+    input.dailyAdUsd < 0
   ) {
     return { error: "Sumele nu pot fi negative." };
   }
 
-  const rate = fees.commissionPercent / 100;
-  if (rate >= 1) {
-    return { error: "Comisionul e prea mare. Pune un procent sub 100." };
+  const platformRate = input.platformPercent / 100;
+  const adRate =
+    input.adMode === "percent"
+      ? (input.adPercent / 100) * (1 + input.adVatPercent / 100)
+      : 0;
+  if (platformRate + adRate >= 1) {
+    return { error: "Platforma și reclama iau tot prețul. Scade procentele." };
+  }
+  if (input.adMode === "daily" && !(input.salesPerDay > 0)) {
+    return { error: "Pune câte vânzări estimezi pe zi." };
   }
 
   const receivedPerUsd = rates.eurPerUsd * (1 - rates.conversionPercent / 100);
-  const productUsd = input.productCostCny / rates.cnyPerUsd;
-  const shippingUsd =
-    input.shippingCurrency === "CNY"
-      ? input.shippingCost / rates.cnyPerUsd
-      : input.shippingCost;
+  const productUsd = toUsd(input.productCost, input.productCurrency, rates.cnyPerUsd);
+  const agentUsd = productUsd * (input.agentPercent / 100);
+  const shippingUsd = toUsd(input.shippingCost, input.shippingCurrency, rates.cnyPerUsd);
+  const dailyAdUsd = input.adMode === "daily" ? input.dailyAdUsd / input.salesPerDay : 0;
   const targetNetUsd =
-    input.desiredProfitEur / receivedPerUsd + productUsd + shippingUsd;
+    input.desiredProfitEur / receivedPerUsd + productUsd + agentUsd + shippingUsd + dailyAdUsd;
 
-  const raw = (targetNetUsd + fees.fixedFeeUsd) / (1 - rate);
+  const raw = targetNetUsd / (1 - platformRate - adRate);
   if (!Number.isFinite(raw) || raw < 0) {
     return { error: "Nu iese un preț cu datele astea." };
   }
 
   const sellPriceUsd = Math.ceil(raw * 100 - 1e-9) / 100;
-  const feeUsd = rate * sellPriceUsd + fees.fixedFeeUsd;
-  const netUsd = sellPriceUsd - feeUsd;
-  const subtotalEur = netUsd * rates.eurPerUsd;
-  const payoutEur = netUsd * receivedPerUsd;
-  const productEur = productUsd * receivedPerUsd;
-  const shippingEur = shippingUsd * receivedPerUsd;
+  const platformUsd = platformRate * sellPriceUsd;
+  const adUsd =
+    input.adMode === "percent" ? (input.adPercent / 100) * sellPriceUsd : dailyAdUsd;
+  const adVatUsd = input.adMode === "percent" ? adUsd * (input.adVatPercent / 100) : 0;
+  const netUsd = sellPriceUsd - platformUsd - adUsd - adVatUsd;
+  const market = rates.eurPerUsd;
+  const received = receivedPerUsd;
+
+  const subtotalEur = sellPriceUsd * market;
+  const conversionEur = netUsd * market * (rates.conversionPercent / 100);
+  const payoutEur = netUsd * received;
+  const productEur = productUsd * received;
+  const agentEur = agentUsd * received;
+  const shippingEur = shippingUsd * received;
 
   return {
     sellPriceUsd,
     payoutEur,
-    profitEur: payoutEur - productEur - shippingEur,
-    productUsd,
-    productEur,
-    shippingUsd,
-    shippingEur,
-    feeUsd,
-    feeEur: feeUsd * receivedPerUsd,
+    profitEur: payoutEur - productEur - agentEur - shippingEur,
     subtotalEur,
-    conversionEur: subtotalEur - payoutEur,
+    conversionEur,
+    platformEur: platformUsd * market,
+    adEur: adUsd * market,
+    adVatEur: adVatUsd * market,
+    agentEur,
+    productEur,
+    shippingEur,
   };
 }
