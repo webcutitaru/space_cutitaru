@@ -5,13 +5,13 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 const FEATURES = [
-  { name: "Anunț", detail: "Countdown, ofertă și mesaj de livrare, în bara de sus." },
-  { name: "Slider", detail: "Imagini și video, cu raport portrait, pătrat sau lat." },
+  { name: "Anunț", detail: "Countdown, ofertă și mesaj de livrare." },
+  { name: "Slider", detail: "Imagini și video, portrait, pătrat sau lat." },
   { name: "Icon bar", detail: "Argumentele magazinului, pe un rând sau una sub alta." },
   { name: "Tab-uri", detail: "Text și imagine, cu un tab deschis din start." },
   { name: "Testimoniale", detail: "Poză, stele, nume și badge de verificat." },
   { name: "Întrebări", detail: "Prima întrebare deschisă, una singură activă." },
-  { name: "Ticker", detail: "Text care rulează, pe mobil, pe desktop sau pe ambele." },
+  { name: "Ticker", detail: "Text care rulează pe mobil, desktop sau ambele." },
   { name: "Coș", detail: "Countdown, livrare gratuită, upsell și bundle." },
 ] as const;
 
@@ -54,6 +54,7 @@ export function OneMarkkPage() {
 
   async function onSubmit(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
+    if (phase === "checking" || phase === "ready" || phase === "submitting") return;
     const next = email.trim().toLowerCase();
     if (!EMAIL.test(next) || next.length > 254) {
       setError("Introdu un email corect.");
@@ -117,149 +118,130 @@ export function OneMarkkPage() {
   }
 
   const secondsLeft = Math.max(1, Math.ceil((1 - progress) * 10));
-  const locked = phase === "submitting" || phase === "checking" || phase === "ready";
+  const locked = phase !== "idle";
+  const buttonLabel =
+    phase === "submitting"
+      ? "Se pornește"
+      : phase === "checking"
+        ? `Se verifică · ${secondsLeft}`
+        : phase === "ready"
+          ? downloading
+            ? "Se descarcă"
+            : "Descarcă tema"
+          : "Verifică emailul";
 
   return (
-    <main lang="ro" className="min-h-dvh bg-[#0c1612] text-[#f4efe6]">
-      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-5 py-8 sm:px-8 sm:py-12 lg:px-10">
+    <main lang="ro" className="relative min-h-dvh">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 grid-bg" />
+        <motion.div
+          className="glow-orb absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-indigo-500/20"
+          animate={reduced ? undefined : { scale: [1, 1.08, 1], opacity: [0.45, 0.7, 0.45] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
         <Link
           href="/"
-          className="w-fit text-sm text-[#f4efe6]/55 transition-colors hover:text-[#f4efe6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6a27a]"
+          className="w-fit rounded-full border border-indigo-400/30 bg-slate-950/70 px-4 py-2 text-sm text-indigo-100 backdrop-blur-md transition-colors hover:border-indigo-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300"
         >
           SPACE
         </Link>
 
-        <header className="mt-16 sm:mt-24">
-          <div className="flex items-end justify-between gap-6">
-            <h1 className="font-[family-name:var(--font-mark)] text-[clamp(3.15rem,15.5vw,10.5rem)] font-medium leading-[0.8] tracking-[-0.045em]">
-              OneMarkk
-            </h1>
-            <p className="hidden pb-2 font-[family-name:var(--font-mark)] text-2xl text-[#f4efe6]/80 lg:block">
-              Pro 1.5.0
-            </p>
-          </div>
-          <motion.span
-            aria-hidden
-            className="mt-7 block h-px origin-left bg-[#c6a27a]"
-            initial={reduced ? { width: 72 } : { width: 0 }}
-            animate={{ width: 72 }}
-            transition={reduced ? { duration: 0 } : { duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-          />
-          <p className="mt-8 max-w-xl font-[family-name:var(--font-mark)] text-2xl italic leading-snug text-[#f4efe6] sm:text-3xl">
-            Exclusiv pentru Cursul ExperDropshipping.
+        <header className="mt-14 text-center sm:mt-20">
+          <p className="font-mono text-xs tracking-[0.35em] text-indigo-300/70">Pro 1.5.0</p>
+          <h1 className="mt-4 bg-gradient-to-b from-white via-indigo-100 to-indigo-300 bg-clip-text text-[clamp(3.2rem,12vw,6.5rem)] font-semibold leading-none tracking-tight text-transparent">
+            OneMarkk
+          </h1>
+          <p className="mt-5 text-lg text-indigo-100 sm:text-xl">Exclusiv pentru Cursul ExperDropshipping.</p>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
+            Temă Shopify pentru magazinul tău de dropshipping. O încarci, o umpli cu produse și pagina arată deja ca un magazin finit.
           </p>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-[#f4efe6]/72 sm:text-lg">
-            O temă Shopify pentru magazinul tău de dropshipping. O încarci, o umpli cu produse și pagina arată deja ca un magazin finit.
-          </p>
-          <p className="mt-4 font-[family-name:var(--font-mark)] text-xl text-[#f4efe6]/80 lg:hidden">Pro 1.5.0</p>
         </header>
 
-        <ul className="mt-16 grid sm:mt-20 sm:grid-cols-2">
-          {FEATURES.map((feature) => (
-            <li key={feature.name} className="border-t border-[#f4efe6]/14 py-5 sm:pr-10">
-              <p className="font-[family-name:var(--font-mark)] text-[1.65rem] leading-none">{feature.name}</p>
-              <p className="mt-2 max-w-sm text-sm leading-relaxed text-[#f4efe6]/62">{feature.detail}</p>
-            </li>
-          ))}
-        </ul>
-
-        <section className="mt-16 border-t border-[#f4efe6]/14 pt-10 sm:mt-20" aria-live="polite">
-          <p className="font-[family-name:var(--font-mark)] text-3xl italic leading-tight sm:text-4xl">
-            Emailul trebuie să fie unul corect.
-          </p>
-
-          {phase !== "ready" ? (
-            <form
-              className="mt-8"
-              noValidate
-              onSubmit={(event) => {
-                event.preventDefault();
-                void onSubmit(event);
-              }}
-            >
-              <label htmlFor="onemarkk-email" className="sr-only">
-                Email
-              </label>
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
-                <input
-                  id="onemarkk-email"
-                  name="email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  required
-                  disabled={locked}
-                  value={email}
-                  placeholder="nume@email.com"
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    if (error) setError("");
-                  }}
-                  className="w-full border-0 border-b border-[#f4efe6]/28 bg-transparent py-3 text-xl text-[#f4efe6] outline-none placeholder:text-[#f4efe6]/28 focus:border-[#c6a27a] disabled:text-[#f4efe6]/50"
-                />
-                {phase === "idle" || phase === "submitting" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void onSubmit();
-                    }}
-                    disabled={phase === "submitting"}
-                    className="w-full shrink-0 bg-[#f4efe6] px-8 py-4 text-base text-[#0c1612] transition-colors hover:bg-[#c6a27a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6a27a] disabled:cursor-default disabled:bg-[#f4efe6]/40 disabled:text-[#0c1612]/50 sm:w-auto"
-                  >
-                    {phase === "submitting" ? "Se pornește" : "Verifică"}
-                  </button>
-                ) : null}
-              </div>
-            </form>
-          ) : null}
-
-          {phase === "checking" ? (
-            <div className="mt-10">
-              <div className="flex items-end justify-between gap-6">
-                <p className="font-[family-name:var(--font-mark)] text-2xl italic sm:text-3xl">{statusFor(progress)}</p>
-                <p className="font-[family-name:var(--font-mark)] text-6xl leading-none tabular-nums sm:text-7xl">
-                  {secondsLeft}
-                </p>
-              </div>
-              <div className="mt-6 h-px w-full bg-[#f4efe6]/15">
-                <div className="h-px bg-[#c6a27a]" style={{ width: `${progress * 100}%` }} />
-              </div>
-            </div>
-          ) : null}
-
-          {phase === "ready" ? (
-            <div className="mt-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="font-[family-name:var(--font-mark)] text-3xl italic sm:text-4xl">Adresa a fost confirmată.</p>
-                <p className="mt-3 max-w-md text-sm leading-relaxed text-[#f4efe6]/62">
-                  În Shopify: Online Store, Themes, Add theme, Upload zip.
-                </p>
-              </div>
+        <section className="mt-10" aria-live="polite">
+          <form
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              void onSubmit(event);
+            }}
+          >
+            <label htmlFor="onemarkk-email" className="mb-2 block text-sm text-indigo-100">
+              Emailul tău
+            </label>
+            <div className="flex flex-col gap-2 rounded-[1.75rem] border border-indigo-400/30 bg-slate-950/75 p-2 backdrop-blur-md sm:flex-row sm:items-center sm:rounded-full">
+              <input
+                id="onemarkk-email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                required
+                disabled={locked}
+                value={email}
+                placeholder="nume@email.com"
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (error) setError("");
+                }}
+                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-slate-100 outline-none placeholder:text-slate-500 disabled:text-slate-300"
+              />
               <button
                 type="button"
-                onClick={download}
-                disabled={downloading}
-                className="w-full shrink-0 bg-[#f4efe6] px-8 py-4 text-base text-[#0c1612] transition-colors hover:bg-[#c6a27a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6a27a] disabled:cursor-default disabled:bg-[#f4efe6]/40 sm:w-auto"
+                onClick={() => {
+                  if (phase === "ready") void download();
+                  else void onSubmit();
+                }}
+                disabled={phase === "submitting" || phase === "checking" || downloading}
+                className="relative shrink-0 overflow-hidden rounded-full bg-indigo-400 px-5 py-3 text-sm font-medium text-slate-950 transition-colors hover:bg-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300 disabled:cursor-default disabled:text-slate-950/80 sm:px-6"
               >
-                {downloading ? "Se descarcă" : "Descarcă"}
+                {phase === "checking" ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 bg-indigo-200"
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                ) : null}
+                <span className="relative">{buttonLabel}</span>
+              </button>
+            </div>
+            <p className="mt-3 text-center text-sm text-indigo-200/80 sm:text-left">
+              {phase === "ready"
+                ? "Adresa a fost confirmată. Apasă Descarcă tema."
+                : phase === "checking"
+                  ? statusFor(progress)
+                  : "Emailul trebuie să fie unul corect. Butonul de descărcare se activează după verificare."}
+            </p>
+          </form>
+
+          {error ? <p className="mt-3 text-center text-sm text-rose-300 sm:text-left">{error}</p> : null}
+
+          {phase === "ready" ? (
+            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+              <p className="text-center text-sm text-slate-400 sm:text-left">
+                În Shopify: Online Store, Themes, Add theme, Upload zip.
+              </p>
+              <button
+                type="button"
+                onClick={reset}
+                className="text-sm text-indigo-200/70 underline decoration-indigo-300/30 underline-offset-4 hover:text-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300"
+              >
+                Altă adresă
               </button>
             </div>
           ) : null}
-
-          {error ? <p className="mt-5 text-sm text-[#e7c2b4]">{error}</p> : null}
-
-          {phase === "ready" ? (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-8 text-sm text-[#f4efe6]/50 underline decoration-[#f4efe6]/20 underline-offset-4 hover:text-[#f4efe6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c6a27a]"
-            >
-              Altă adresă
-            </button>
-          ) : null}
         </section>
 
-        <footer className="mt-auto pt-20 text-sm text-[#f4efe6]/40">OneMarkk Pro 1.5.0</footer>
+        <ul className="mt-12 grid gap-2 sm:grid-cols-2">
+          {FEATURES.map((feature) => (
+            <li key={feature.name} className="rounded-2xl border border-indigo-400/20 bg-slate-950/40 px-4 py-3">
+              <p className="text-sm font-medium text-indigo-100">{feature.name}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-400">{feature.detail}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </main>
   );
