@@ -4,7 +4,7 @@ import { OneMarkkPage } from "@/components/onemarkk/OneMarkkPage";
 export const metadata: Metadata = {
   title: "OneMarkk Pro",
   description:
-    "Temă Shopify OneMarkk Pro 1.5.0, exclusiv pentru Cursul ExperDropshipping. Introdu emailul, așteaptă verificarea și descarcă arhiva.",
+    "Tema Shopify OneMarkk Pro 1.5.0, exclusiv pentru Cursul ExperDropshipping. Homepage, pagina de produs și coșul vin deja aranjate.",
   openGraph: {
     title: "OneMarkk Pro | SPACE by cutitaru",
     description: "Temă Shopify exclusivă pentru Cursul ExperDropshipping.",

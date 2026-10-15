@@ -5,14 +5,30 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
 const FEATURES = [
-  { name: "Anunț", detail: "Countdown, ofertă și mesaj de livrare." },
-  { name: "Slider", detail: "Imagini și video, portrait, pătrat sau lat." },
-  { name: "Icon bar", detail: "Argumentele magazinului, pe un rând sau una sub alta." },
-  { name: "Tab-uri", detail: "Text și imagine, cu un tab deschis din start." },
-  { name: "Testimoniale", detail: "Poză, stele, nume și badge de verificat." },
-  { name: "Întrebări", detail: "Prima întrebare deschisă, una singură activă." },
-  { name: "Ticker", detail: "Text care rulează pe mobil, desktop sau ambele." },
-  { name: "Coș", detail: "Countdown, livrare gratuită, upsell și bundle." },
+  {
+    name: "Bara de anunț",
+    detail: "Countdown, ofertă și mesaj de livrare, legate de paleta magazinului.",
+  },
+  {
+    name: "Pagina de produs",
+    detail: "Puncte cu iconițe, pachet Bundle & Save cu cadou inclus și o dată estimată de livrare.",
+  },
+  {
+    name: "Coșul",
+    detail: "Numărătoare inversă în minute, bară până la transport gratuit și un produs sugerat.",
+  },
+  {
+    name: "Slider și tab-uri",
+    detail: "Imagini și video, plus tab-uri de conținut care se așază corect și pe telefon.",
+  },
+  {
+    name: "Testimoniale",
+    detail: "Postări în stil Instagram și Facebook, cu badge de verificat și stele.",
+  },
+  {
+    name: "FAQ și icon bar",
+    detail: "Întrebări, un rând de argumente și un separator animat între secțiuni.",
+  },
 ] as const;
 
 const CHECK_MS = 10_000;
@@ -156,7 +172,7 @@ export function OneMarkkPage() {
           </h1>
           <p className="mt-5 text-lg text-indigo-100 sm:text-xl">Exclusiv pentru Cursul ExperDropshipping.</p>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
-            Temă Shopify pentru magazinul tău de dropshipping. O încarci, o umpli cu produse și pagina arată deja ca un magazin finit.
+            Tema Shopify a cursului, pregătită de instalat. Homepage-ul, pagina de produs și coșul vin deja aranjate, ca magazinul să arate gata din prima încărcare.
           </p>
         </header>
 
