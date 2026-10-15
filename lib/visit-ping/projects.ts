@@ -6,6 +6,7 @@ const PROJECTS: Record<string, string> = {
   "/reelsave": "ReelSave",
   "/etsy-analyzer": "Etsy Analyzer",
   "/price-calculator": "Price Calculator",
+  "/onemarkk": "OneMarkk",
 };
 
 export function projectName(path: string): string {

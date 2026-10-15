@@ -127,6 +127,7 @@ const PROJECTS = [
   { number: "04", title: "ReelSave", href: "/reelsave" },
   { number: "05", title: "Etsy Analyzer", href: "/etsy-analyzer" },
   { number: "06", title: "Price Calculator", href: "/price-calculator" },
+  { number: "07", title: "OneMarkk", href: "/onemarkk" },
 ] as const;
 
 function ProjectCTA({ reduced }: { reduced: boolean }) {

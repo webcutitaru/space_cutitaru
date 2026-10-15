@@ -12,5 +12,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/reelsave`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/etsy-analyzer`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${base}/price-calculator`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${base}/onemarkk`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
   ];
 }
