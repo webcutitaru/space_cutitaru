@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   return new NextResponse(bytes, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": 'attachment; filename="onemarkk-pro-v1.5.0.zip"',
+        "Content-Disposition": 'attachment; filename="onemarkk-pro-v1.6.3.zip"',
       "Content-Length": String(bytes.byteLength),
       "Cache-Control": "no-store",
     },
