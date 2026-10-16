@@ -3,33 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-
-const FEATURES = [
-  {
-    name: "Bara de anunț",
-    detail: "Countdown, ofertă și mesaj de livrare, legate de paleta magazinului.",
-  },
-  {
-    name: "Pagina de produs",
-    detail: "Puncte cu iconițe, pachet Bundle & Save cu cadou inclus și o dată estimată de livrare.",
-  },
-  {
-    name: "Coșul",
-    detail: "Numărătoare inversă în minute, bară până la transport gratuit și un produs sugerat.",
-  },
-  {
-    name: "Slider și tab-uri",
-    detail: "Imagini și video, plus tab-uri de conținut care se așază corect și pe telefon.",
-  },
-  {
-    name: "Testimoniale",
-    detail: "Postări în stil Instagram și Facebook, cu badge de verificat și stele.",
-  },
-  {
-    name: "FAQ și icon bar",
-    detail: "Întrebări, un rând de argumente și un separator animat între secțiuni.",
-  },
-] as const;
+import { ThemeGuide } from "@/components/onemarkk/ThemeGuide";
 
 const CHECK_MS = 10_000;
 const EMAIL = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
@@ -150,6 +124,16 @@ export function OneMarkkPage() {
     setEmail("");
   }
 
+  function onGetTheme() {
+    if (phase === "ready") {
+      void download();
+      return;
+    }
+    const field = document.getElementById("onemarkk-email");
+    field?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    if (field instanceof HTMLInputElement) field.focus();
+  }
+
   const secondsLeft = Math.max(1, Math.ceil((1 - progress) * 10));
   const locked = phase !== "idle";
   const buttonLabel =
@@ -174,7 +158,7 @@ export function OneMarkkPage() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col px-4 py-8 sm:px-6 sm:py-12">
         <Link
           href="/"
           className="w-fit rounded-full border border-indigo-400/30 bg-slate-950/70 px-4 py-2 text-sm text-indigo-100 backdrop-blur-md transition-colors hover:border-indigo-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300"
@@ -193,7 +177,7 @@ export function OneMarkkPage() {
           </p>
         </header>
 
-        <section className="mt-10" aria-live="polite">
+        <section id="descarca" className="mt-10 scroll-mt-8" aria-live="polite">
           <form
             noValidate
             onSubmit={(event) => {
@@ -267,15 +251,8 @@ export function OneMarkkPage() {
           ) : null}
         </section>
 
-        <ul className="mt-12 grid gap-2 sm:grid-cols-2">
-          {FEATURES.map((feature) => (
-            <li key={feature.name} className="rounded-2xl border border-indigo-400/20 bg-slate-950/40 px-4 py-3">
-              <p className="text-sm font-medium text-indigo-100">{feature.name}</p>
-              <p className="mt-1 text-sm leading-relaxed text-slate-400">{feature.detail}</p>
-            </li>
-          ))}
-        </ul>
       </div>
+      <ThemeGuide onGetTheme={onGetTheme} />
     </main>
   );
 }

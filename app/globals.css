@@ -55,3 +55,12 @@ body {
   filter: blur(80px);
   pointer-events: none;
 }
+
+@keyframes omk-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
