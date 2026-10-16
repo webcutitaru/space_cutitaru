@@ -10,6 +10,8 @@ export function VisitPing() {
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/api")) return;
+    if (navigator.webdriver) return;
+    if ("prerendering" in document && document.prerendering) return;
     try {
       if (localStorage.getItem(SKIP_KEY) === "1") return;
     } catch {
@@ -26,9 +28,9 @@ export function VisitPing() {
 
     let tz = "";
     try {
-      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     } catch {
-      tz = "";
+      tz = "UTC";
     }
 
     const screen =
@@ -45,6 +47,7 @@ export function VisitPing() {
         lang: navigator.language || "",
         tz,
         screen,
+        touch: navigator.maxTouchPoints || 0,
       }),
     }).catch(() => {});
   }, [pathname]);

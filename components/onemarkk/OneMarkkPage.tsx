@@ -79,11 +79,28 @@ export function OneMarkkPage() {
 
     setError("");
     setPhase("submitting");
+    let tz = "";
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      tz = "UTC";
+    }
+    const screen =
+      window.screen?.width && window.screen?.height
+        ? `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio || 1}`
+        : "";
     try {
       const response = await fetch("/api/onemarkk/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: next, referrer: document.referrer }),
+        body: JSON.stringify({
+          email: next,
+          referrer: document.referrer || "",
+          lang: navigator.language || "",
+          tz,
+          screen,
+          touch: navigator.maxTouchPoints || 0,
+        }),
       });
       const data = (await response.json()) as { token?: string; error?: string };
       if (!response.ok || !data.token) {

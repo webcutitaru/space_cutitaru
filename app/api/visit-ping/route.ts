@@ -1,17 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { notifyVisit } from "@/lib/visit-ping/notify";
+import { clientIp, isPrefetch } from "@/lib/telegram/visitor";
 
 export const dynamic = "force-dynamic";
-
-function clientIp(request: Request): string {
-  const cf = request.headers.get("cf-connecting-ip");
-  if (cf) return cf.trim();
-  const real = request.headers.get("x-real-ip");
-  if (real) return real.trim();
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() ?? "";
-  return "";
-}
 
 export async function POST(request: Request) {
   let body: {
@@ -20,6 +11,8 @@ export async function POST(request: Request) {
     lang?: unknown;
     tz?: unknown;
     screen?: unknown;
+    touch?: unknown;
+    webdriver?: unknown;
   } = {};
   try {
     body = (await request.json()) as typeof body;
@@ -28,16 +21,20 @@ export async function POST(request: Request) {
   }
 
   const text = (value: unknown) => (typeof value === "string" ? value : "");
-
-  void notifyVisit({
+  const visit = {
     path: text(body.path),
     referrer: text(body.referrer),
     lang: text(body.lang),
     tz: text(body.tz),
     screen: text(body.screen),
+    touch: typeof body.touch === "number" && Number.isFinite(body.touch) ? body.touch : 0,
+    webdriver: body.webdriver === true,
+    prefetch: isPrefetch(request),
     ip: clientIp(request),
     userAgent: request.headers.get("user-agent") ?? "",
-  }).catch(() => {});
+  };
+
+  after(() => notifyVisit(visit).catch(() => {}));
 
   return new NextResponse(null, { status: 204 });
 }
