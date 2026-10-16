@@ -124,16 +124,6 @@ export function OneMarkkPage() {
     setEmail("");
   }
 
-  function onGetTheme() {
-    if (phase === "ready") {
-      void download();
-      return;
-    }
-    const field = document.getElementById("onemarkk-email");
-    field?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
-    if (field instanceof HTMLInputElement) field.focus();
-  }
-
   const secondsLeft = Math.max(1, Math.ceil((1 - progress) * 10));
   const locked = phase !== "idle";
   const buttonLabel =
@@ -205,24 +195,26 @@ export function OneMarkkPage() {
                 }}
                 className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-slate-100 outline-none placeholder:text-slate-500 disabled:text-slate-300"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  if (phase === "ready") void download();
-                  else void onSubmit();
-                }}
-                disabled={phase === "submitting" || phase === "checking" || downloading}
-                className="relative shrink-0 overflow-hidden rounded-full bg-indigo-400 px-5 py-3 text-sm font-medium text-slate-950 transition-colors hover:bg-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300 disabled:cursor-default disabled:text-slate-950/80 sm:px-6"
-              >
-                {phase === "checking" ? (
-                  <span
-                    aria-hidden
-                    className="absolute inset-y-0 left-0 bg-indigo-200"
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                ) : null}
-                <span className="relative">{buttonLabel}</span>
-              </button>
+              {email.trim() || phase !== "idle" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (phase === "ready") void download();
+                    else void onSubmit();
+                  }}
+                  disabled={phase === "submitting" || phase === "checking" || downloading}
+                  className="relative shrink-0 overflow-hidden rounded-full bg-indigo-400 px-5 py-3 text-sm font-medium text-slate-950 transition-colors hover:bg-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-300 disabled:cursor-default disabled:text-slate-950/80 sm:px-6"
+                >
+                  {phase === "checking" ? (
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 bg-indigo-200"
+                      style={{ width: `${progress * 100}%` }}
+                    />
+                  ) : null}
+                  <span className="relative">{buttonLabel}</span>
+                </button>
+              ) : null}
             </div>
             <p className="mt-3 text-center text-sm text-indigo-200/80 sm:text-left">
               {phase === "ready"
@@ -252,7 +244,7 @@ export function OneMarkkPage() {
         </section>
 
       </div>
-      <ThemeGuide onGetTheme={onGetTheme} />
+      <ThemeGuide />
     </main>
   );
 }
