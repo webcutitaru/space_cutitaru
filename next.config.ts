@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["playwright-core"],
   outputFileTracingIncludes: {
-    "/api/onemarkk/file": ["./private/onemarkk-pro-v1.6.3.zip"],
+    "/api/onemarkk/file": ["./private/onemarkk-pro-v1.6.4.zip"],
   },
 };
 

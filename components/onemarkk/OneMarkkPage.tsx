@@ -106,7 +106,7 @@ export function OneMarkkPage() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "onemarkk-pro-v1.6.3.zip";
+      anchor.download = "onemarkk-pro-v1.6.4.zip";
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -157,7 +157,7 @@ export function OneMarkkPage() {
         </Link>
 
         <header className="mt-14 text-center sm:mt-20">
-          <p className="font-mono text-xs tracking-[0.35em] text-indigo-300/70">Pro 1.6.3</p>
+          <p className="font-mono text-xs tracking-[0.35em] text-indigo-300/70">Pro 1.6.4</p>
           <h1 className="mt-4 bg-gradient-to-b from-white via-indigo-100 to-indigo-300 bg-clip-text text-[clamp(3.2rem,12vw,6.5rem)] font-semibold leading-none tracking-tight text-transparent">
             OneMarkk
           </h1>
